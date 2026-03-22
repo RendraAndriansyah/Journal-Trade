@@ -257,21 +257,35 @@ function App() {
           </header>
 
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {activeTab === 'dashboard' && activeAccount ? (
+            {!activeAccount || accounts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center h-[50vh] border border-[#232936] border-dashed rounded-xl bg-[#0b0e14]">
+                <div className="bg-blue-600/10 p-4 rounded-full mb-4">
+                  <Wallet className="w-8 h-8 text-blue-500" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-200 mb-2">Welcome to GoldJournal</h2>
+                <p className="text-sm text-gray-500 mb-6 max-w-md">Your database is completely empty. Add your first trading account to begin logging trades or importing MT5 data!</p>
+                <button 
+                  onClick={() => setShowAccountModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+                >
+                  <PlusCircle className="w-5 h-5"/> Create First Account
+                </button>
+              </div>
+            ) : activeTab === 'dashboard' ? (
               <Dashboard trades={trades} account={activeAccount} balanceLogs={balanceLogs} />
-            ) : activeTab === 'trade' && activeAccount ? (
+            ) : activeTab === 'trade' ? (
               <div className="max-w-3xl mx-auto">
                 <TradeForm accountId={activeAccount.id} onTradeAdded={() => setActiveTab('dashboard')} />
               </div>
-            ) : activeTab === 'history' && activeAccount ? (
+            ) : activeTab === 'history' ? (
               <div className="max-w-5xl mx-auto">
                 <TradeHistory accountId={activeAccount.id} />
               </div>
-            ) : activeTab === 'balance' && activeAccount ? (
+            ) : activeTab === 'balance' ? (
               <div className="max-w-3xl mx-auto">
                 <BalanceForm accountId={activeAccount.id} />
               </div>
-            ) : activeTab === 'import' && activeAccount ? (
+            ) : activeTab === 'import' ? (
               <div className="max-w-3xl mx-auto">
                 <ImportExport accountId={activeAccount.id} />
               </div>
