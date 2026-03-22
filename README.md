@@ -1,73 +1,38 @@
-# React + TypeScript + Vite
+# GoldJournal: Mobile-First Trading Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A powerful, offline-capable trading journal and performance analytics dashboard specifically optimized for professional forex tracking with full raw MT5 log integration. 
 
-Currently, two official plugins are available:
+Built entirely with React, TypeScript, TailwindCSS v4, and Dexie (IndexedDB).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Core Features
 
-## React Compiler
+- **📱 Mobile First Interface**: Features a comfortable, thumb-friendly bottom navigation bar for mobile setups that automatically expands into a sidebar dashboard for desktop viewports.
+- **💾 Offline Database**: Powered by IndexedDB (`Dexie.js`). The entire application runs natively within your browser without requiring a backend server. Your highly-sensitive journal data never leaves your local machine.
+- **💼 Multi-Currencies / Accounts**: Effortlessly isolate performance datasets. Toggling between accounts (e.g., your USD broker account vs your IDR account) immediately sandboxes your balances, trade logs, and charts.
+- **📥 Sync Data & MT5 Parser**: Never type trades manually again. Directly paste raw tab-separated logs from MT5 to automatically trace entries, exits, lot calculations, and top-ups mathematically back into JSON. Intelligent anti-duplicate mechanisms skip previously recorded trades ensuring you never bloat your metrics upon re-importing!
+- **🧾 Comprehensive Trade History**: Dive deep into your journal log. Features powerful `date-fns` powered filters allowing custom date periods, sorting by 'Profit/Loss', or isolating positive outcomes to review setups.
+- **📈 Advanced Analytics**: Instant computation of win-rates, average losses vs average wins, coupled with a dynamic chronological equity chart representing drawdowns that perfectly adjust when fresh deposits or withdrawals are logged!
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+Because the application requires zero external servers, getting it running locally is incredibly fast. 
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Ensure you have `pnpm` currently installed.
+2. Open a terminal and clone exactly into the root project directory.
+3. Install package dependencies:
+   ```bash
+   pnpm install
+   ```
+4. Start the development server:
+   ```bash
+   pnpm run dev
+   ```
+   Navigate to the localhost URL emitted in your terminal (usually `http://localhost:5173`)! 
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Tech Stack
+- **Framework**: React 19 + TypeScript + Vite
+- **Styling**: Tailwind CSS v4
+- **Database**: Dexie.js (IndexedDB wrapper)
+- **Charts**: Recharts
+- **Dates**: `date-fns`
+- **Icons**: Lucide React
