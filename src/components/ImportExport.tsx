@@ -40,7 +40,7 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
       if (record.type === 'balance' || record.action === 'balance') {
         const [datePart, timePart] = record.timestamp.split(' ');
         const formattedDate = datePart.replace(/\./g, '-');
-        const isoDateTime = new Date(`${formattedDate}T${timePart}Z`).toISOString();
+        const isoDateTime = new Date(`${formattedDate}T${timePart}`).toISOString();
         
         const bAmount = Math.abs(record.profit);
         const bType = record.profit >= 0 ? 'Deposit' : 'Withdrawal';
@@ -69,7 +69,7 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
 
       if (record.action === 'in' || record.action === 'in ') {
         pendingIn.push(record);
-      } else if (record.action === 'out' || record.action === 'out ') {
+      } else if (record.action.startsWith('out')) {
         const expectedInType = record.type === 'buy' ? 'sell' : 'buy';
         let inIdx = pendingIn.findIndex(p => p.symbol === record.symbol && p.type === expectedInType);
         
@@ -80,12 +80,19 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         let entryPrice = record.price;
         if (inIdx !== -1) {
           entryPrice = pendingIn[inIdx].price;
-          pendingIn.splice(inIdx, 1);
+          // Verify if it's a partial close
+          const remainingLots = Number((pendingIn[inIdx].lots - record.lots).toFixed(2));
+          if (remainingLots > 0) {
+            pendingIn[inIdx].lots = remainingLots;
+          } else {
+            pendingIn.splice(inIdx, 1);
+          }
         }
 
         const [datePart, timePart] = record.timestamp.split(' ');
         const formattedDate = datePart.replace(/\./g, '-');
-        const isoDateTime = new Date(`${formattedDate}T${timePart}Z`).toISOString();
+        // Do not force Z (UTC), assume user's local timezone so broker output hour is preserved perfectly in UI
+        const isoDateTime = new Date(`${formattedDate}T${timePart}`).toISOString();
         
         const tradeType: 'Buy' | 'Sell' = record.type === 'buy' ? 'Sell' : 'Buy';
         const calcPips = calculatePips(entryPrice, record.price, tradeType, record.symbol);
@@ -235,10 +242,19 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         const price = parseFloat(parts[5]) || 0;
         
         const action = parts[8]?.trim().toLowerCase();
-        if (action !== 'in' && action !== 'out') continue;
+        if (action !== 'in' && !action?.startsWith('out')) continue;
 
+        const commissionStr = parts[9] ? parts[9].replace(/\s/g, '') : "0";
+        const taxesStr = parts[10] ? parts[10].replace(/\s/g, '') : "0";
+        const swapStr = parts[11] ? parts[11].replace(/\s/g, '') : "0";
         const profitStr = parts[12] ? parts[12].replace(/\s/g, '') : "0";
-        const profit = parseFloat(profitStr) || 0;
+        
+        const commission = parseFloat(commissionStr) || 0;
+        const taxes = parseFloat(taxesStr) || 0;
+        const swap = parseFloat(swapStr) || 0;
+        const rawProfit = parseFloat(profitStr) || 0;
+        
+        const netProfit = rawProfit + commission + taxes + swap;
 
         result.push({
           timestamp,
@@ -247,7 +263,7 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
           symbol,
           price,
           action,
-          profit
+          profit: Number(netProfit.toFixed(2))
         });
       }
     }

@@ -8,6 +8,7 @@ import { TradeHistory } from './components/TradeHistory';
 import { db } from './db';
 import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { calculatePips } from './utils/calculations';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trade' | 'history' | 'balance' | 'import'>('dashboard');
@@ -24,6 +25,23 @@ function App() {
       setSelectedAccountId(accounts[0].id);
     }
   }, [accounts, selectedAccountId]);
+
+  // Fix: Force recalculate all pips using the new accurate XAU logic
+  // because deduplication prevented re-imports from overwriting old massive pip calculations
+  useEffect(() => {
+    const fixPips = async () => {
+      const allTrades = await db.trades.toArray();
+      const updates = allTrades.map(t => {
+        const accuratePips = calculatePips(t.entryPrice, t.closingPrice, t.type as 'Buy'|'Sell', t.pair);
+        if (t.pips !== accuratePips) {
+          return db.trades.update(t.id, { pips: accuratePips });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(updates);
+    };
+    fixPips();
+  }, []);
 
   const activeAccount = accounts?.find(a => a.id === selectedAccountId);
   

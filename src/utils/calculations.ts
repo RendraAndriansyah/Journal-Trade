@@ -14,7 +14,7 @@ export const calculatePips = (
     diff = entryPrice - closingPrice;
   }
   
-  if (pair === 'XAU/USD') {
+  if (pair.toUpperCase().includes('XAU') || pair.toUpperCase().includes('GOLD')) {
     return parseFloat((diff / 0.10).toFixed(1));
   }
   
@@ -23,8 +23,9 @@ export const calculatePips = (
 };
 
 export const calculatePnL = (pips: number, lotSize: number, pair: string = 'XAU/USD'): number => {
-  if (pair === 'XAU/USD') {
-    // For 1 lot of XAU/USD (100 oz), 1 pip = $10.
+  if (pair.toUpperCase().includes('XAU') || pair.toUpperCase().includes('GOLD')) {
+    // For 1 lot of XAU/USD (100 oz), 10 pips = $10. So 1 pip = $1 (Wait, user says 5025-5015 is 100 pips).
+    // If difference is 10, pips = 100. For 1 lot, PnL = $1000. So PnL = pips * lotSize * 10
     return parseFloat((pips * lotSize * 10).toFixed(2));
   }
   // Fallback rough estimate for other pairs

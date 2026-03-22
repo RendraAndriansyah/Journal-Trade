@@ -28,6 +28,14 @@ export const TradeHistory = ({ accountId }: Props) => {
 
   let filteredTrades = [...rawTrades];
 
+  const handleDeleteFiltered = async () => {
+    if (filteredTrades.length === 0) return;
+    if (window.confirm(`Are you sure you want to permanently delete these ${filteredTrades.length} displayed trades?`)) {
+      const idsToDelete = filteredTrades.map(t => t.id);
+      await db.trades.bulkDelete(idsToDelete);
+    }
+  };
+
   if (dateFilter === 'today') {
     filteredTrades = filteredTrades.filter(t => isToday(new Date(t.dateTime)));
   } else if (dateFilter === 'custom') {
@@ -57,9 +65,21 @@ export const TradeHistory = ({ accountId }: Props) => {
 
   return (
     <div className="card w-full overflow-hidden">
-      <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-6 border-b border-[#232936] pb-4 flex items-center gap-2">
-        Trade History
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-[#232936] pb-4">
+        <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent flex items-center gap-2">
+          Trade History
+        </h3>
+        
+        {filteredTrades.length > 0 && (
+          <button 
+            onClick={handleDeleteFiltered}
+            title="Delete currently displayed trades"
+            className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-xs font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Wipe Displayed
+          </button>
+        )}
+      </div>
       
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6 bg-[#0b0e14] p-4 rounded-xl border border-[#232936]">
         <div className="flex items-center text-gray-400 gap-2 pr-2 sm:border-r border-[#232936]">
@@ -131,8 +151,8 @@ export const TradeHistory = ({ accountId }: Props) => {
                     {trade.pair}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-opacity-10 capitalize
-                      ${trade.type === 'Buy' ? 'bg-emerald-500 text-emerald-400' : 'bg-rose-500 text-rose-400'}`}
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium capitalize
+                      ${trade.type === 'Buy' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}
                     >
                       {trade.type === 'Buy' ? <ArrowUpRight className="w-3 h-3"/> : <ArrowDownRight className="w-3 h-3"/>}
                       {trade.type}
