@@ -78,8 +78,11 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         }
         
         let entryPrice = record.price;
+        let finalTimestamp = record.timestamp;
+        
         if (inIdx !== -1) {
           entryPrice = pendingIn[inIdx].price;
+          finalTimestamp = pendingIn[inIdx].timestamp;
           // Verify if it's a partial close
           const remainingLots = Number((pendingIn[inIdx].lots - record.lots).toFixed(2));
           if (remainingLots > 0) {
@@ -89,7 +92,7 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
           }
         }
 
-        const [datePart, timePart] = record.timestamp.split(' ');
+        const [datePart, timePart] = finalTimestamp.split(' ');
         const formattedDate = datePart.replace(/\./g, '-');
         // Do not force Z (UTC), assume user's local timezone so broker output hour is preserved perfectly in UI
         const isoDateTime = new Date(`${formattedDate}T${timePart}`).toISOString();
@@ -140,6 +143,7 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
 
   const handleExport = async () => {
     const trades = await db.trades.where('accountId').equals(accountId).toArray();
+    const balanceLogs = await db.balanceLogs.where('accountId').equals(accountId).toArray();
     const exportData: ExportFormat[] = [];
     
     trades.forEach(t => {
@@ -166,6 +170,22 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         price: t.closingPrice,
         action: "out",
         profit: t.pnl
+      });
+    });
+
+    balanceLogs.forEach(b => {
+      const ts = format(new Date(b.dateTime), "yyyy.MM.dd HH:mm:ss");
+      const amt = b.type === 'Deposit' ? b.amount : -b.amount;
+      
+      exportData.push({
+        timestamp: ts,
+        type: "balance",
+        lots: 0,
+        symbol: "",
+        price: 0,
+        action: "balance",
+        profit: amt,
+        note: b.note
       });
     });
     
