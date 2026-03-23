@@ -2,45 +2,127 @@ import { useState, useMemo } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
-import { ArrowUpRight, ArrowDownRight, Trash2, Filter } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, X } from 'lucide-react';
 import type { Trade } from '../types';
 
 interface Props {
   accountId: string;
 }
 
+// Extract the original lot size from a partial close note like "Partial Close (0.06/0.12 lots)"
+function extractOriginalLots(note: string): number | null {
+  const match = note.match(/Partial Close \([\d.]+\/([\d.]+) lots\)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+// A "display row" — either a single trade or a merged group of partial closes
+interface TradeRow {
+  id: string;          // unique key for react
+  trades: Trade[];     // 1 trade = normal, >1 = partial group
+  isPartialGroup: boolean;
+  dateTime: string;
+  pair: string;
+  type: string;
+  totalLots: number;
+  entryPrice: number;
+  avgClosePrice: number;
+  totalPnl: number;
+  totalPips: number;
+}
+
+function buildRows(trades: Trade[]): TradeRow[] {
+  // Group partial closes that share same (dateTime, pair, type, originalLots)
+  const partialGroups = new Map<string, Trade[]>();
+  const standalone: Trade[] = [];
+
+  for (const t of trades) {
+    if (t.note && t.note.startsWith('Partial Close')) {
+      const origLots = extractOriginalLots(t.note);
+      if (origLots !== null) {
+        const key = `${t.dateTime}|${t.pair}|${t.type}|${origLots}`;
+        if (!partialGroups.has(key)) partialGroups.set(key, []);
+        partialGroups.get(key)!.push(t);
+        continue;
+      }
+    }
+    standalone.push(t);
+  }
+
+  const rows: TradeRow[] = [];
+
+  // Standalone trades
+  for (const t of standalone) {
+    rows.push({
+      id: t.id,
+      trades: [t],
+      isPartialGroup: false,
+      dateTime: t.dateTime,
+      pair: t.pair,
+      type: t.type,
+      totalLots: t.lotSize,
+      entryPrice: t.entryPrice,
+      avgClosePrice: t.closingPrice,
+      totalPnl: t.pnl,
+      totalPips: t.pips,
+    });
+  }
+
+  // Partial groups
+  for (const [key, group] of partialGroups) {
+    const totalLots = group.reduce((s, t) => s + t.lotSize, 0);
+    const totalPnl = group.reduce((s, t) => s + t.pnl, 0);
+    // Weighted average close price
+    const avgClose = group.reduce((s, t) => s + t.closingPrice * t.lotSize, 0) / totalLots;
+    // Use first trade's entry price (they should all share the same original entry)
+    const entryPrice = group[0].entryPrice;
+    // Weighted average pips
+    const avgPips = group.reduce((s, t) => s + t.pips * t.lotSize, 0) / totalLots;
+    // Use key as group id
+    rows.push({
+      id: key,
+      trades: group,
+      isPartialGroup: true,
+      dateTime: group[0].dateTime,
+      pair: group[0].pair,
+      type: group[0].type,
+      totalLots: parseFloat(totalLots.toFixed(2)),
+      entryPrice,
+      avgClosePrice: parseFloat(avgClose.toFixed(2)),
+      totalPnl: parseFloat(totalPnl.toFixed(2)),
+      totalPips: parseFloat(avgPips.toFixed(1)),
+    });
+  }
+
+  // Sort all rows newest first
+  rows.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+  return rows;
+}
+
 export const TradeHistory = ({ accountId }: Props) => {
   const [dateFilter, setDateFilter] = useState<'today' | 'lastDay' | 'all' | 'custom'>('lastDay');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [dialogTrades, setDialogTrades] = useState<Trade[] | null>(null);
 
-  const rawTrades = useLiveQuery(() => 
+  const rawTrades = useLiveQuery(() =>
     db.trades.where('accountId').equals(accountId).reverse().sortBy('dateTime')
   , [accountId]) || [];
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this trade?')) {
-      await db.trades.delete(id);
+  const handleDelete = async (ids: string[]) => {
+    const label = ids.length === 1 ? 'this trade' : `these ${ids.length} partial closes`;
+    if (window.confirm(`Are you sure you want to delete ${label}?`)) {
+      await db.trades.bulkDelete(ids);
     }
   };
 
-  let filteredTrades = [...rawTrades];
-
-  // Find the last day that actually has trades (for 'lastDay' filter)
+  // Find the last day that actually has trades
   const lastTradingDate = useMemo(() => {
     if (!rawTrades.length) return null;
-    // Sort descending and pick the date of the newest trade
     const sorted = [...rawTrades].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
     return startOfDay(new Date(sorted[0].dateTime));
   }, [rawTrades]);
 
-  const handleDeleteFiltered = async () => {
-    if (filteredTrades.length === 0) return;
-    if (window.confirm(`Are you sure you want to permanently delete these ${filteredTrades.length} displayed trades?`)) {
-      const idsToDelete = filteredTrades.map(t => t.id);
-      await db.trades.bulkDelete(idsToDelete);
-    }
-  };
+  let filteredTrades = [...rawTrades];
 
   if (dateFilter === 'today') {
     filteredTrades = filteredTrades.filter(t => isToday(new Date(t.dateTime)));
@@ -57,27 +139,100 @@ export const TradeHistory = ({ accountId }: Props) => {
     });
   }
 
-  // Default sort by Newest First
-  filteredTrades.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+  const displayRows = useMemo(() => buildRows(filteredTrades), [filteredTrades]);
+
+  const handleDeleteFiltered = async () => {
+    if (filteredTrades.length === 0) return;
+    if (window.confirm(`Are you sure you want to permanently delete these ${filteredTrades.length} displayed trades?`)) {
+      await db.trades.bulkDelete(filteredTrades.map(t => t.id));
+    }
+  };
 
   return (
     <div className="card w-full overflow-hidden">
+
+      {/* Partial Close Detail Dialog */}
+      {dialogTrades && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setDialogTrades(null)}>
+          <div
+            className="bg-[#151a23] border border-[#232936] rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-indigo-400" />
+                  Partial Close Breakdown
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {dialogTrades[0].pair} · {dialogTrades[0].type} · {format(parseISO(dialogTrades[0].dateTime), 'MMM dd, yyyy HH:mm')}
+                </p>
+              </div>
+              <button onClick={() => setDialogTrades(null)} className="p-2 hover:bg-[#232936] rounded-lg text-gray-500 hover:text-gray-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="text-xs text-gray-400 uppercase bg-[#0b0e14] rounded-lg">
+                    <th className="px-3 py-2 text-left rounded-tl-lg">#</th>
+                    <th className="px-3 py-2 text-right">Lots</th>
+                    <th className="px-3 py-2 text-right">Entry</th>
+                    <th className="px-3 py-2 text-right">Close</th>
+                    <th className="px-3 py-2 text-right">Pips</th>
+                    <th className="px-3 py-2 text-right rounded-tr-lg">Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#232936]">
+                  {dialogTrades.map((t, i) => (
+                    <tr key={t.id} className="hover:bg-[#1e2535] transition-colors">
+                      <td className="px-3 py-2.5 text-gray-500 text-xs">#{i + 1}</td>
+                      <td className="px-3 py-2.5 font-mono text-right text-gray-300">{t.lotSize.toFixed(2)}</td>
+                      <td className="px-3 py-2.5 font-mono text-right text-gray-400">{t.entryPrice.toFixed(2)}</td>
+                      <td className="px-3 py-2.5 font-mono text-right text-gray-400">{t.closingPrice.toFixed(2)}</td>
+                      <td className={`px-3 py-2.5 font-mono text-right ${t.pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {t.pips >= 0 ? '+' : ''}{t.pips}
+                      </td>
+                      <td className={`px-3 py-2.5 font-mono font-bold text-right ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {t.pnl >= 0 ? '+' : '-'}${Math.abs(t.pnl).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-[#2d3547] bg-[#0b0e14]">
+                    <td className="px-3 py-2.5 text-xs text-gray-400 font-semibold uppercase rounded-bl-lg">Total</td>
+                    <td className="px-3 py-2.5 font-mono text-right text-gray-300 font-semibold">
+                      {parseFloat(dialogTrades.reduce((s, t) => s + t.lotSize, 0).toFixed(2))}
+                    </td>
+                    <td colSpan={3}></td>
+                    <td className={`px-3 py-2.5 font-mono font-bold text-right rounded-br-lg ${dialogTrades.reduce((s, t) => s + t.pnl, 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {(() => { const tot = dialogTrades.reduce((s, t) => s + t.pnl, 0); return `${tot >= 0 ? '+' : '-'}$${Math.abs(tot).toFixed(2)}`; })()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-[#232936] pb-4">
-        <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent flex items-center gap-2">
+        <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
           Trade History
         </h3>
-        
         {filteredTrades.length > 0 && (
-          <button 
+          <button
             onClick={handleDeleteFiltered}
-            title="Delete currently displayed trades"
             className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-xs font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" /> Wipe Displayed
           </button>
         )}
       </div>
-      
+
       <div className="flex flex-row flex-wrap gap-3 mb-6 bg-[#0b0e14] p-4 rounded-xl border border-[#232936]">
         <div className="flex items-center text-gray-400 gap-2 pr-2 border-r border-[#232936]">
           <Filter className="w-4 h-4" /> <span className="text-sm font-medium hidden sm:inline">Filters</span>
@@ -88,27 +243,17 @@ export const TradeHistory = ({ accountId }: Props) => {
           <option value="all">All Days</option>
           <option value="custom">Custom Period</option>
         </select>
-        
+
         {dateFilter === 'custom' && (
           <div className="flex items-center gap-2 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
-            <input 
-              type="date" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
-              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" 
-            />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" />
             <span className="text-gray-500 text-xs">to</span>
-            <input 
-              type="date" 
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
-              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" 
-            />
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" />
           </div>
         )}
       </div>
 
-      {filteredTrades.length === 0 ? (
+      {displayRows.length === 0 ? (
         <div className="text-center text-gray-500 py-8 bg-[#0b0e14] rounded-xl border border-[#232936] border-dashed">No trades match the current filters.</div>
       ) : (
         <div className="overflow-x-auto pb-4">
@@ -123,52 +268,51 @@ export const TradeHistory = ({ accountId }: Props) => {
                 <th className="px-4 py-3 font-medium text-right">Close</th>
                 <th className="px-4 py-3 font-medium text-right">Pips</th>
                 <th className="px-4 py-3 font-medium text-right">Profit</th>
-                <th className="px-4 py-3 font-medium text-center">Notes</th>
+                <th className="px-4 py-3 font-medium text-center">Detail</th>
                 <th className="px-4 py-3 rounded-tr-lg font-medium text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#232936]">
-              {filteredTrades.map((trade: Trade) => (
-                <tr key={trade.id} className="hover:bg-[#151a23] transition-colors">
+              {displayRows.map((row) => (
+                <tr key={row.id} className="hover:bg-[#151a23] transition-colors">
                   <td className="px-4 py-3 text-sm text-gray-300">
-                    {format(parseISO(trade.dateTime), 'MMM dd, yyyy HH:mm')}
+                    {format(parseISO(row.dateTime), 'MMM dd, yyyy HH:mm')}
                   </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-200">
-                    {trade.pair}
-                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-200">{row.pair}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium capitalize
-                      ${trade.type === 'Buy' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}
-                    >
-                      {trade.type === 'Buy' ? <ArrowUpRight className="w-3 h-3"/> : <ArrowDownRight className="w-3 h-3"/>}
-                      {trade.type}
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium
+                      ${row.type === 'Buy' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                      {row.type === 'Buy' ? <ArrowUpRight className="w-3 h-3"/> : <ArrowDownRight className="w-3 h-3"/>}
+                      {row.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-right text-gray-300">
-                    {trade.lotSize.toFixed(2)}
-                  </td>
+                  <td className="px-4 py-3 text-sm font-mono text-right text-gray-300">{row.totalLots.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-right text-gray-400">{row.entryPrice.toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm font-mono text-right text-gray-400">
-                    {trade.entryPrice.toFixed(2)}
+                    {row.isPartialGroup ? <span className="text-gray-500 italic text-xs">avg {row.avgClosePrice.toFixed(2)}</span> : row.avgClosePrice.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-right text-gray-400">
-                    {trade.closingPrice.toFixed(2)}
+                  <td className={`px-4 py-3 text-sm font-mono text-right ${row.totalPips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {row.totalPips >= 0 ? '+' : ''}{row.totalPips}
                   </td>
-                  <td className={`px-4 py-3 text-sm font-mono text-right ${trade.pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {trade.pips >= 0 ? '+' : ''}{trade.pips}
-                  </td>
-                  <td className={`px-4 py-3 text-sm font-mono font-bold text-right ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {trade.pnl >= 0 ? '+' : '-'}${Math.abs(trade.pnl).toFixed(2)}
+                  <td className={`px-4 py-3 text-sm font-mono font-bold text-right ${row.totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {row.totalPnl >= 0 ? '+' : '-'}${Math.abs(row.totalPnl).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {trade.note && (
-                      <span className="inline-flex items-center px-2 py-1 bg-indigo-500/10 text-indigo-400 text-[10px] font-semibold rounded-full whitespace-nowrap">
-                        {trade.note}
-                      </span>
+                    {row.isPartialGroup ? (
+                      <button
+                        onClick={() => setDialogTrades(row.trades)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold rounded-full hover:bg-indigo-500/20 transition-colors cursor-pointer whitespace-nowrap"
+                        title="View partial close breakdown"
+                      >
+                        <GitBranch className="w-3 h-3" /> {row.trades.length}x Partial
+                      </button>
+                    ) : (
+                      <span className="text-gray-600 text-xs">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button 
-                      onClick={() => handleDelete(trade.id)}
+                    <button
+                      onClick={() => handleDelete(row.trades.map(t => t.id))}
                       className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors border border-transparent hover:border-rose-500/20 cursor-pointer"
                       title="Delete Trade"
                     >
