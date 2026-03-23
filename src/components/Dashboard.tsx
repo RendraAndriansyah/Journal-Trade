@@ -3,6 +3,7 @@ import type { Trade, Account, BalanceLog } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity, ArrowDownCircle } from 'lucide-react';
 import { format, parseISO, getDay } from 'date-fns';
+import { groupTradesIntoPositions } from '../utils/calculations';
 
 interface DashboardProps {
   trades: Trade[];
@@ -12,6 +13,9 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLogs }) => {
   const stats = useMemo(() => {
+    // Group partial closes into single logical positions for accurate counting
+    const positions = groupTradesIntoPositions(trades);
+
     let winCount = 0;
     let netPnL = 0;
     let totalWinSize = 0;
@@ -48,13 +52,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         currentBalance += pnl;
         netPnL += pnl;
 
-        if (pnl > 0) {
-          winCount++;
-          totalWinSize += pnl;
-        } else if (pnl < 0) {
-          totalLossSize += Math.abs(pnl);
-        }
-
         const tr = event.obj as Trade;
         const day = getDay(parseISO(tr.dateTime));
         pnlByDayArray[day] += pnl;
@@ -79,8 +76,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       });
     });
 
-    const lossCount = trades.length - winCount;
-    const winRate = trades.length > 0 ? (winCount / trades.length) * 100 : 0;
+    // Count wins/losses at POSITION level (partial closes merged)
+    for (const pos of positions) {
+      netPnL; // already summed from raw trades above — keep equity curve accurate
+      if (pos.totalPnl > 0) {
+        winCount++;
+        totalWinSize += pos.totalPnl;
+      } else if (pos.totalPnl < 0) {
+        totalLossSize += Math.abs(pos.totalPnl);
+      }
+    }
+    // Recalculate netPnL from positions to avoid double-count
+    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0) +
+             balanceLogs.reduce((s, b) => b.type === 'Deposit' ? s : s - b.amount, 0);
+    // Restore: netPnL = total pnl from trades only (not balance logs)
+    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0);
+
+    const lossCount = positions.length - winCount;
+    const winRate = positions.length > 0 ? (winCount / positions.length) * 100 : 0;
     const avgWin = winCount > 0 ? totalWinSize / winCount : 0;
     const avgLoss = lossCount > 0 ? totalLossSize / lossCount : 0;
 
@@ -92,7 +105,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     return {
       netPnL,
       winRate,
-      totalTrades: trades.length,
+      totalTrades: positions.length,
       currentBalance,
       avgWin,
       avgLoss,
@@ -152,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
           <div className="text-3xl font-bold font-mono tracking-tight text-white mb-1">
             {stats.totalTrades}
           </div>
-          <div className="text-xs text-amber-500/80">Logged executions</div>
+          <div className="text-xs text-amber-500/80">Unique positions opened</div>
         </div>
       </div>
 

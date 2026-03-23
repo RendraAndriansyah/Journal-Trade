@@ -55,3 +55,70 @@ export const calculateRRRatio = (
 
   return parseFloat((reward / risk).toFixed(2));
 };
+
+// ─── Position Grouping ────────────────────────────────────────────────────────
+// Groups raw trade records into logical "positions" — partial closes that share
+// the same open are merged into one position with aggregated PnL / lots.
+export interface Position {
+  trades: import('../types').Trade[];
+  dateTime: string;
+  pair: string;
+  type: string;
+  totalPnl: number;
+  totalLots: number;
+  entryPrice: number;
+}
+
+function extractOriginalLotsFromNote(note: string): number | null {
+  const match = note.match(/Partial Close \([\d.]+\/([\d.]+) lots\)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+export function groupTradesIntoPositions(trades: import('../types').Trade[]): Position[] {
+  const partialGroups = new Map<string, import('../types').Trade[]>();
+  const standalone: import('../types').Trade[] = [];
+
+  for (const t of trades) {
+    if (t.note && t.note.startsWith('Partial Close')) {
+      const origLots = extractOriginalLotsFromNote(t.note);
+      if (origLots !== null) {
+        const key = `${t.dateTime}|${t.pair}|${t.type}|${origLots}`;
+        if (!partialGroups.has(key)) partialGroups.set(key, []);
+        partialGroups.get(key)!.push(t);
+        continue;
+      }
+    }
+    standalone.push(t);
+  }
+
+  const positions: Position[] = [];
+
+  for (const t of standalone) {
+    positions.push({
+      trades: [t],
+      dateTime: t.dateTime,
+      pair: t.pair,
+      type: t.type,
+      totalPnl: t.pnl,
+      totalLots: t.lotSize,
+      entryPrice: t.entryPrice,
+    });
+  }
+
+  for (const [, group] of partialGroups) {
+    const totalLots = parseFloat(group.reduce((s, t) => s + t.lotSize, 0).toFixed(2));
+    const totalPnl = parseFloat(group.reduce((s, t) => s + t.pnl, 0).toFixed(2));
+    positions.push({
+      trades: group,
+      dateTime: group[0].dateTime,
+      pair: group[0].pair,
+      type: group[0].type,
+      totalPnl,
+      totalLots,
+      entryPrice: group[0].entryPrice,
+    });
+  }
+
+  return positions;
+}
+
