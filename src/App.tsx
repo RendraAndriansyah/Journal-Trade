@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Dashboard } from './components/Dashboard';
-import { TradeForm } from './components/TradeForm';
-import { BalanceForm } from './components/BalanceForm';
-import { ImportExport } from './components/ImportExport';
-import { TradeHistory } from './components/TradeHistory';
+const Dashboard    = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const TradeForm    = lazy(() => import('./components/TradeForm').then(m => ({ default: m.TradeForm })));
+const BalanceForm  = lazy(() => import('./components/BalanceForm').then(m => ({ default: m.BalanceForm })));
+const ImportExport = lazy(() => import('./components/ImportExport').then(m => ({ default: m.ImportExport })));
+const TradeHistory = lazy(() => import('./components/TradeHistory').then(m => ({ default: m.TradeHistory })));
 import { db } from './db';
 import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table, BarChart2, Lock } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -262,7 +262,13 @@ function App() {
             )}
           </header>
 
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64 text-gray-500">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
+              Loading...
+            </div>
+          }>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {!activeAccount || accounts.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-8 text-center h-[50vh] border border-[#232936] border-dashed rounded-xl bg-[#0b0e14]">
                 <div className="bg-blue-600/10 p-4 rounded-full mb-4">
@@ -321,7 +327,8 @@ function App() {
                 <ImportExport accountId={activeAccount.id} />
               </div>
             ) : null}
-          </div>
+            </div>
+          </Suspense>
 
         </div>
       </main>
