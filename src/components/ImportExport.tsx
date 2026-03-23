@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Download, Upload, FileJson, FileText, ArrowRight } from 'lucide-react';
 import { db } from '../db';
 import type { Trade } from '../types';
-import { calculatePips } from '../utils/calculations';
+import { calculatePips, calculatePnL } from '../utils/calculations';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
@@ -14,6 +14,7 @@ interface ExportFormat {
   price: number;
   action: string;
   profit: number;
+  rawProfit?: number;
   note?: string;
 }
 
@@ -68,27 +69,92 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
       }
 
       if (record.action === 'in' || record.action === 'in ') {
+        // Store originalLots immediately so partial-close detection is always correct
+        (record as any).originalLots = record.lots;
         pendingIn.push(record);
       } else if (record.action.startsWith('out')) {
         const expectedInType = record.type === 'buy' ? 'sell' : 'buy';
-        let inIdx = pendingIn.findIndex(p => p.symbol === record.symbol && p.type === expectedInType);
+        const parsedTradeType: 'Buy' | 'Sell' = expectedInType === 'buy' ? 'Buy' : 'Sell';
         
-        if (inIdx === -1) {
-            inIdx = pendingIn.findIndex(p => p.symbol === record.symbol);
+        const possibleMatches = pendingIn.map((p, i) => ({ p, i }))
+          .filter(x => x.p.symbol === record.symbol && x.p.type === expectedInType);
+          
+        let inIdx = -1;
+        if (possibleMatches.length === 1) {
+          inIdx = possibleMatches[0].i;
+        } else if (possibleMatches.length > 1) {
+          // Heuristic PnL targeting: Find the exact entry ticket that produced this exact MT5 profit!
+          let bestDiff = Infinity;
+          for (const match of possibleMatches) {
+            const simulatedPips = calculatePips(match.p.price, record.price, parsedTradeType, record.symbol);
+            const simulatedPnL = calculatePnL(simulatedPips, record.lots, record.symbol);
+            const diff = Math.abs(simulatedPnL - record.profit);
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              inIdx = match.i;
+            }
+          }
         }
         
         let entryPrice = record.price;
         let finalTimestamp = record.timestamp;
+        let closeNote = "";
         
         if (inIdx !== -1) {
           entryPrice = pendingIn[inIdx].price;
           finalTimestamp = pendingIn[inIdx].timestamp;
+          
+          // --- AUTO REPAIR CORRUPTED JSON EXPORTS ---
+          const simulatedPips = calculatePips(entryPrice, record.price, parsedTradeType, record.symbol);
+          const simulatedPnL = calculatePnL(simulatedPips, record.lots, record.symbol);
+          const rp = record.rawProfit !== undefined ? record.rawProfit : record.profit;
+          const diff = Math.abs(simulatedPnL - rp);
+          
+          if (diff > 5.0 && Math.abs(record.profit) > 0.01) {
+            let inferredDiff = 0;
+            if (record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD')) {
+              inferredDiff = rp / (100 * record.lots);
+            } else {
+              inferredDiff = rp / (100000 * record.lots);
+            }
+            if (parsedTradeType === 'Buy') {
+              entryPrice = record.price - inferredDiff;
+            } else {
+              entryPrice = record.price + inferredDiff;
+            }
+          }
+          // --- END AUTO REPAIR ---
+
           // Verify if it's a partial close
-          const remainingLots = Number((pendingIn[inIdx].lots - record.lots).toFixed(2));
+          const pIn: any = pendingIn[inIdx];
+          const originalLots: number = pIn.originalLots ?? pIn.lots;
+          const currentLots: number = pIn.lots;
+          const remainingLots = Number((currentLots - record.lots).toFixed(2));
+          
+          // It's a partial close if: closing fewer lots than currently open,
+          // OR this is a later closure of a position that was already partially closed
+          const isPartialClose = remainingLots > 0 || originalLots !== record.lots;
+          closeNote = isPartialClose ? `Partial Close (${record.lots}/${originalLots} lots)` : "";
+
           if (remainingLots > 0) {
-            pendingIn[inIdx].lots = remainingLots;
+            pIn.lots = remainingLots;
           } else {
             pendingIn.splice(inIdx, 1);
+          }
+        } else {
+          // Fallback: The user exported an 'out' record but excluded the 'in' record from their text log.
+          // We natively reverse-engineer the ENTRY PRICE exclusively from the Raw PnL generated to restore total pip mapping!
+          const rp = record.rawProfit !== undefined ? record.rawProfit : record.profit;
+          let inferredDiff = 0;
+          if (record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD')) {
+            inferredDiff = rp / (100 * record.lots);
+          } else {
+            inferredDiff = rp / (100000 * record.lots);
+          }
+          if (parsedTradeType === 'Buy') {
+            entryPrice = record.price - inferredDiff;
+          } else {
+            entryPrice = record.price + inferredDiff;
           }
         }
 
@@ -97,21 +163,21 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         // Do not force Z (UTC), assume user's local timezone so broker output hour is preserved perfectly in UI
         const isoDateTime = new Date(`${formattedDate}T${timePart}`).toISOString();
         
-        const tradeType: 'Buy' | 'Sell' = record.type === 'buy' ? 'Sell' : 'Buy';
-        const calcPips = calculatePips(entryPrice, record.price, tradeType, record.symbol);
+        const calcPips = calculatePips(entryPrice, record.price, parsedTradeType, record.symbol);
         
         const tObj = {
           id: uuidv4(),
           accountId,
           dateTime: isoDateTime,
           pair: record.symbol,
-          type: tradeType,
+          type: parsedTradeType,
           entryPrice,
           closingPrice: record.price,
           lotSize: record.lots,
           pips: calcPips,
           pnl: record.profit,
-          rrRatio: null
+          rrRatio: null,
+          note: record.note || closeNote
         };
         
         const dupIdx = unmatchedTrades.findIndex(ext => 
@@ -283,7 +349,8 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
           symbol,
           price,
           action,
-          profit: Number(netProfit.toFixed(2))
+          profit: Number(netProfit.toFixed(2)),
+          rawProfit: rawProfit
         });
       }
     }

@@ -22,6 +22,7 @@ export interface Trade {
   pips: number;
   pnl: number;
   rrRatio?: number | null;
+  note?: string;
 }
 
 export interface BalanceLog {

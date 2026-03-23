@@ -13,8 +13,6 @@ export const TradeHistory = ({ accountId }: Props) => {
   const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [resultFilter, setResultFilter] = useState<'all' | 'profit' | 'loss'>('all');
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'profit-desc' | 'profit-asc'>('date-desc');
 
   const rawTrades = useLiveQuery(() => 
     db.trades.where('accountId').equals(accountId).reverse().sortBy('dateTime')
@@ -47,21 +45,8 @@ export const TradeHistory = ({ accountId }: Props) => {
     });
   }
 
-  if (resultFilter === 'profit') {
-    filteredTrades = filteredTrades.filter(t => t.pnl > 0);
-  } else if (resultFilter === 'loss') {
-    filteredTrades = filteredTrades.filter(t => t.pnl < 0);
-  }
-
-  if (sortBy === 'date-asc') {
-    filteredTrades.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-  } else if (sortBy === 'profit-desc') {
-    filteredTrades.sort((a, b) => b.pnl - a.pnl);
-  } else if (sortBy === 'profit-asc') {
-    filteredTrades.sort((a, b) => a.pnl - b.pnl);
-  } else {
-    filteredTrades.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
-  }
+  // Default sort by Newest First
+  filteredTrades.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
   return (
     <div className="card w-full overflow-hidden">
@@ -81,46 +66,33 @@ export const TradeHistory = ({ accountId }: Props) => {
         )}
       </div>
       
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6 bg-[#0b0e14] p-4 rounded-xl border border-[#232936]">
-        <div className="flex items-center text-gray-400 gap-2 pr-2 sm:border-r border-[#232936]">
+      <div className="flex flex-row flex-wrap gap-3 mb-6 bg-[#0b0e14] p-4 rounded-xl border border-[#232936]">
+        <div className="flex items-center text-gray-400 gap-2 pr-2 border-r border-[#232936]">
           <Filter className="w-4 h-4" /> <span className="text-sm font-medium hidden sm:inline">Filters</span>
         </div>
-        <select value={dateFilter} onChange={e => setDateFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none flex-1">
+        <select value={dateFilter} onChange={e => setDateFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none w-full sm:w-auto">
           <option value="today">Today's Trades</option>
           <option value="all">All Days</option>
           <option value="custom">Custom Period</option>
         </select>
         
         {dateFilter === 'custom' && (
-          <div className="flex items-center gap-2 flex-1 w-full sm:w-auto min-w-[240px]">
+          <div className="flex items-center gap-2 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
             <input 
               type="date" 
               value={startDate} 
               onChange={e => setStartDate(e.target.value)} 
-              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full cursor-pointer" 
+              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" 
             />
             <span className="text-gray-500 text-xs">to</span>
             <input 
               type="date" 
               value={endDate} 
               onChange={e => setEndDate(e.target.value)} 
-              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full cursor-pointer" 
+              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" 
             />
           </div>
         )}
-
-        <select value={resultFilter} onChange={e => setResultFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none flex-1">
-          <option value="all">All Outcomes</option>
-          <option value="profit">Only Wins</option>
-          <option value="loss">Only Losses</option>
-        </select>
-        
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none flex-1">
-          <option value="date-desc">Newest First</option>
-          <option value="date-asc">Oldest First</option>
-          <option value="profit-desc">Highest Profit</option>
-          <option value="profit-asc">Largest Loss</option>
-        </select>
       </div>
 
       {filteredTrades.length === 0 ? (
@@ -138,6 +110,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                 <th className="px-4 py-3 font-medium text-right">Close</th>
                 <th className="px-4 py-3 font-medium text-right">Pips</th>
                 <th className="px-4 py-3 font-medium text-right">Profit</th>
+                <th className="px-4 py-3 font-medium text-center">Notes</th>
                 <th className="px-4 py-3 rounded-tr-lg font-medium text-center">Action</th>
               </tr>
             </thead>
@@ -172,6 +145,13 @@ export const TradeHistory = ({ accountId }: Props) => {
                   </td>
                   <td className={`px-4 py-3 text-sm font-mono font-bold text-right ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {trade.pnl >= 0 ? '+' : '-'}${Math.abs(trade.pnl).toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {trade.note && (
+                      <span className="inline-flex items-center px-2 py-1 bg-indigo-500/10 text-indigo-400 text-[10px] font-semibold rounded-full whitespace-nowrap">
+                        {trade.note}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button 
