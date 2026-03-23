@@ -122,3 +122,51 @@ export function groupTradesIntoPositions(trades: import('../types').Trade[]): Po
   return positions;
 }
 
+// ─── Layer Grouping ────────────────────────────────────────────────────────────
+// Traders sometimes "layer" — opening multiple tickets in the same direction
+// within a very short window (≤15 s). We treat those as one logical trade.
+const LAYER_WINDOW_MS = 15_000;
+
+export interface LayerGroup {
+  positions: Position[];
+  dateTime: string;   // earliest open time
+  pair: string;
+  type: string;
+  totalPnl: number;
+  totalLots: number;
+  isLayer: boolean;   // true only when >1 position merged
+}
+
+function buildLayerGroup(positions: Position[]): LayerGroup {
+  const totalLots = parseFloat(positions.reduce((s, p) => s + p.totalLots, 0).toFixed(2));
+  const totalPnl  = parseFloat(positions.reduce((s, p) => s + p.totalPnl,  0).toFixed(2));
+  return { positions, dateTime: positions[0].dateTime, pair: positions[0].pair,
+    type: positions[0].type, totalPnl, totalLots, isLayer: positions.length > 1 };
+}
+
+export function groupPositionsIntoLayers(positions: Position[]): LayerGroup[] {
+  if (positions.length === 0) return [];
+  const sorted = [...positions].sort(
+    (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+  );
+  const layers: LayerGroup[] = [];
+  let group: Position[] = [sorted[0]];
+  let startMs = new Date(sorted[0].dateTime).getTime();
+  for (let i = 1; i < sorted.length; i++) {
+    const pos   = sorted[i];
+    const posMs = new Date(pos.dateTime).getTime();
+    if (pos.pair === group[0].pair && pos.type === group[0].type && posMs - startMs <= LAYER_WINDOW_MS) {
+      group.push(pos);
+    } else {
+      layers.push(buildLayerGroup(group));
+      group = [pos]; startMs = posMs;
+    }
+  }
+  layers.push(buildLayerGroup(group));
+  return layers;
+}
+
+/** Convenience: partial-close merge → layer merge in one call */
+export function groupTradesIntoLayers(trades: import('../types').Trade[]): LayerGroup[] {
+  return groupPositionsIntoLayers(groupTradesIntoPositions(trades));
+}

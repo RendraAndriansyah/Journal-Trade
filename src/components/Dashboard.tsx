@@ -3,7 +3,7 @@ import type { Trade, Account, BalanceLog } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity } from 'lucide-react';
 import { format, parseISO, getDay } from 'date-fns';
-import { groupTradesIntoPositions } from '../utils/calculations';
+import { groupTradesIntoLayers } from '../utils/calculations';
 
 interface DashboardProps {
   trades: Trade[];
@@ -13,8 +13,8 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLogs }) => {
   const stats = useMemo(() => {
-    // Group partial closes into single logical positions for accurate counting
-    const positions = groupTradesIntoPositions(trades);
+    // Group: partial closes → positions → layers (orders within 15 s = 1 trade)
+    const positions = groupTradesIntoLayers(trades);
 
     let winCount = 0;
     let netPnL = 0;
