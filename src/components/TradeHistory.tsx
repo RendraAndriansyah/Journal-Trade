@@ -171,19 +171,19 @@ export const TradeHistory = ({ accountId }: Props) => {
 
   const layerRows = useMemo(() => buildLayerRows(buildRows(filteredTrades)), [filteredTrades]);
 
-  const handleDelete = async (ids: string[]) => {
-    const label = ids.length === 1 ? 'this trade' : `these ${ids.length} records`;
-    if (window.confirm(`Delete ${label}?`)) await db.trades.bulkDelete(ids);
-  };
 
-  const handleDeleteFiltered = async () => {
+  const handleDeleteByDay = async () => {
     if (!filteredTrades.length) return;
-    if (window.confirm(`Permanently delete ${filteredTrades.length} displayed trades?`))
+    if (window.confirm(`Delete ${filteredTrades.length} trades from the current period?`))
       await db.trades.bulkDelete(filteredTrades.map(t => t.id));
   };
 
-  const allIdsForLayer = (lr: LayerRow) =>
-    lr.rows.flatMap(r => r.trades.map(t => t.id));
+  const handleDeleteAll = async () => {
+    if (!rawTrades.length) return;
+    if (window.confirm(`Delete ALL ${rawTrades.length} trades for this account? This cannot be undone.`))
+      await db.trades.bulkDelete(rawTrades.map(t => t.id));
+  };
+
 
 
   return (
@@ -317,11 +317,18 @@ export const TradeHistory = ({ accountId }: Props) => {
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-[#232936] pb-4">
         <h3 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Trade History</h3>
-        {filteredTrades.length > 0 && (
-          <button onClick={handleDeleteFiltered} className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-xs font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer">
-            <Trash2 className="w-3.5 h-3.5" /> Wipe Displayed
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {filteredTrades.length > 0 && (
+            <button onClick={handleDeleteByDay} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer">
+              <Trash2 className="w-3.5 h-3.5" /> Delete by Day
+            </button>
+          )}
+          {rawTrades.length > 0 && (
+            <button onClick={handleDeleteAll} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-900/30 text-rose-500 border border-rose-700/30 rounded-lg text-xs font-semibold hover:bg-rose-900/50 transition-colors cursor-pointer">
+              <Trash2 className="w-3.5 h-3.5" /> Delete All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Filters ──────────────────────────────────────────────────────── */}
@@ -331,7 +338,6 @@ export const TradeHistory = ({ accountId }: Props) => {
         </div>
         <select value={dateFilter} onChange={e => setDateFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none w-full sm:w-auto">
           <option value="lastDay">Last Trading Day</option>
-          <option value="today">Today</option>
           <option value="all">All Days</option>
           <option value="custom">Custom Period</option>
         </select>
@@ -360,8 +366,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                 <th className="px-4 py-3 font-medium text-right">Close</th>
                 <th className="px-4 py-3 font-medium text-right">Pips</th>
                 <th className="px-4 py-3 font-medium text-right">Profit</th>
-                <th className="px-4 py-3 font-medium text-center">Detail</th>
-                <th className="px-4 py-3 rounded-tr-lg font-medium text-center">Action</th>
+                <th className="px-4 py-3 rounded-tr-lg font-medium text-center">Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#232936]">
@@ -411,16 +416,6 @@ export const TradeHistory = ({ accountId }: Props) => {
                     ) : (
                       <span className="text-gray-600 text-xs">—</span>
                     )}
-                  </td>
-
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => handleDelete(allIdsForLayer(lr))}
-                      className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors border border-transparent hover:border-rose-500/20 cursor-pointer"
-                      title="Delete Trade"
-                    >
-                      <Trash2 className="w-4 h-4"/>
-                    </button>
                   </td>
                 </tr>
               ))}
