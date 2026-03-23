@@ -127,7 +127,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
           <div className="text-3xl font-bold font-mono tracking-tight text-white mb-1">
             ${stats.currentBalance.toFixed(2)}
           </div>
-          <div className="text-xs text-blue-400/80">Account Equity</div>
+          <div className="text-xs text-blue-400/80">Account Equity · <span className="font-semibold">{account.currency}</span></div>
         </div>
 
         <div className={`card border-l-4 overflow-hidden relative ${stats.netPnL >= 0 ? 'border-l-emerald-500' : 'border-l-rose-500'}`}>
@@ -165,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
           <div className="text-3xl font-bold font-mono tracking-tight text-white mb-1">
             {stats.totalTrades}
           </div>
-          <div className="text-xs text-amber-500/80">Unique positions opened</div>
+          <div className="text-xs text-amber-500/80">Total Trades</div>
         </div>
       </div>
 
