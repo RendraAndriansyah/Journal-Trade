@@ -22,7 +22,6 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [rawText, setRawText] = useState('');
-  const [parsedJson, setParsedJson] = useState('');
 
   const processJSONImport = async (data: ExportFormat[]) => {
     const pendingIn: ExportFormat[] = [];
@@ -309,94 +308,6 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
     reader.readAsText(file);
   };
 
-  const handleConvertRaw = () => {
-    if (!rawText.trim()) return;
-    
-    const lines = rawText.trim().split('\n');
-    const result: ExportFormat[] = [];
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const parts = line.split('\t');
-      
-      if (parts.length >= 8) {
-        const type = parts[2]?.trim().toLowerCase();
-        
-        if (type === 'balance') {
-          const timestamp = parts[0]?.trim();
-          const profitStr = parts[12] ? parts[12].replace(/\s/g, '') : "0";
-          const amount = parseFloat(profitStr) || 0;
-          
-          result.push({
-            timestamp,
-            type: 'balance',
-            lots: 0,
-            symbol: '',
-            price: 0,
-            action: 'balance',
-            profit: amount,
-            note: parts[7]?.trim()
-          });
-          continue;
-        }
-
-        if (type !== 'buy' && type !== 'sell') continue;
-        
-        const timestamp = parts[0]?.trim();
-        const lots = parseFloat(parts[3]) || 0;
-        const symbol = parts[4]?.trim();
-        const price = parseFloat(parts[5]) || 0;
-        
-        const action = parts[8]?.trim().toLowerCase();
-        if (action !== 'in' && !action?.startsWith('out')) continue;
-
-        const commissionStr = parts[9] ? parts[9].replace(/\s/g, '') : "0";
-        const taxesStr = parts[10] ? parts[10].replace(/\s/g, '') : "0";
-        const swapStr = parts[11] ? parts[11].replace(/\s/g, '') : "0";
-        const profitStr = parts[12] ? parts[12].replace(/\s/g, '') : "0";
-        
-        const commission = parseFloat(commissionStr) || 0;
-        const taxes = parseFloat(taxesStr) || 0;
-        const swap = parseFloat(swapStr) || 0;
-        const rawProfit = parseFloat(profitStr) || 0;
-        
-        const netProfit = rawProfit + commission + taxes + swap;
-
-        result.push({
-          timestamp,
-          type,
-          lots,
-          symbol,
-          price,
-          action,
-          profit: Number(netProfit.toFixed(2)),
-          rawProfit: rawProfit
-        });
-      }
-    }
-    
-    setParsedJson(JSON.stringify(result, null, 2));
-  };
-
-  const handleImportParsed = async () => {
-    if (!parsedJson) return;
-    setLoading(true);
-    try {
-      const data = JSON.parse(parsedJson) as ExportFormat[];
-      const result = await processJSONImport(data);
-      if (result.imported > 0) {
-        alert(`Successfully imported ${result.imported} new trades from converted text! (${result.skipped} duplicates skipped)`);
-        setRawText('');
-        setParsedJson('');
-      } else {
-        alert(`No new items to import from JSON text. (${result.skipped} duplicates skipped)`);
-      }
-    } catch {
-      alert('Invalid JSON text format in the converted result.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="card">
@@ -451,40 +362,55 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
           Paste your tab-separated raw MT5 log data below to convert it to JSON format and import.
         </p>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <textarea
-              value={rawText}
-              onChange={e => setRawText(e.target.value)}
-              placeholder="Paste raw log data here (2026.03.18 00:03:35	14120073933	buy...)"
-              className="w-full h-48 bg-[#0b0e14] border border-[#232936] rounded-lg p-3 text-xs text-gray-300 font-mono focus:outline-none focus:border-indigo-500 resize-none"
-            />
-            <button 
-              onClick={handleConvertRaw}
-              disabled={!rawText.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              Parse to JSON <ArrowRight className="w-4 h-4"/>
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <textarea
-              value={parsedJson}
-              onChange={e => setParsedJson(e.target.value)}
-              placeholder="Converted JSON preview will appear here..."
-              className="w-full h-48 bg-[#0b0e14] border border-[#232936] rounded-lg p-3 text-xs text-emerald-400/80 font-mono focus:outline-none focus:border-emerald-500 resize-none whitespace-pre"
-            />
-            <button 
-              onClick={handleImportParsed}
-              disabled={loading || !parsedJson.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors cursor-pointer"
-            >
-              {loading ? 'Importing...' : 'Confirm JSON & Import Data'}
-            </button>
-          </div>
+        <div className="flex flex-col gap-3">
+          <textarea
+            value={rawText}
+            onChange={e => setRawText(e.target.value)}
+            placeholder={"Paste raw MT5 log data here (tab-separated):\n2026.03.18 00:03:35\t14120073933\tbuy\t0.10\tXAUUSDc\t..."}
+            className="w-full h-52 bg-[#0b0e14] border border-[#232936] rounded-lg p-3 text-xs text-gray-300 font-mono focus:outline-none focus:border-indigo-500 resize-none"
+          />
+          <button
+            onClick={async () => {
+              if (!rawText.trim()) return;
+              const lines = rawText.trim().split('\n');
+              const result: ExportFormat[] = [];
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                const parts = line.split('\t');
+                if (parts.length >= 8) {
+                  const type = parts[2]?.trim().toLowerCase();
+                  if (type === 'balance') {
+                    const profitStr = parts[12] ? parts[12].replace(/\s/g, '') : '0';
+                    result.push({ timestamp: parts[0]?.trim(), type: 'balance', lots: 0, symbol: '', price: 0, action: 'balance', profit: parseFloat(profitStr) || 0, note: parts[7]?.trim() });
+                    continue;
+                  }
+                  if (type !== 'buy' && type !== 'sell') continue;
+                  const action = parts[8]?.trim().toLowerCase();
+                  if (action !== 'in' && !action?.startsWith('out')) continue;
+                  const commission = parseFloat(parts[9]?.replace(/\s/g, '') || '0') || 0;
+                  const taxes      = parseFloat(parts[10]?.replace(/\s/g, '') || '0') || 0;
+                  const swap       = parseFloat(parts[11]?.replace(/\s/g, '') || '0') || 0;
+                  const rawProfit  = parseFloat(parts[12]?.replace(/\s/g, '') || '0') || 0;
+                  result.push({ timestamp: parts[0]?.trim(), type, lots: parseFloat(parts[3]) || 0, symbol: parts[4]?.trim(), price: parseFloat(parts[5]) || 0, action, profit: Number((rawProfit + commission + taxes + swap).toFixed(2)), rawProfit });
+                }
+              }
+              if (result.length === 0) { alert('No valid trade rows found. Check your log format.'); return; }
+              setLoading(true);
+              try {
+                const res = await processJSONImport(result);
+                if (res.imported > 0) { alert(`Imported ${res.imported} new items! (${res.skipped} duplicates skipped)`); setRawText(''); }
+                else { alert(`No new items to import. (${res.skipped} duplicates skipped)`); }
+              } catch (err) { console.error(err); alert('Import failed. Check the log format.'); }
+              finally { setLoading(false); }
+            }}
+            disabled={loading || !rawText.trim()}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-6 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            {loading ? 'Importing...' : <><ArrowRight className="w-4 h-4" /> Import</>}
+          </button>
         </div>
       </div>
     </div>
   );
 };
+

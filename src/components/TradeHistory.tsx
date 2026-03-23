@@ -191,7 +191,7 @@ export const TradeHistory = ({ accountId }: Props) => {
 
       {/* ── Partial Close Dialog ─────────────────────────────────────────── */}
       {partialDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPartialDialog(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setPartialDialog(null)}>
           <div className="bg-[#151a23] border border-[#232936] rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -280,7 +280,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                         <span className="text-gray-500 text-xs">#{i+1}</span>
                         {row.isPartialGroup && (
                           <button
-                            onClick={() => { setLayerDialog(null); setTimeout(() => setPartialDialog(row.trades), 50); }}
+                            onClick={() => setPartialDialog(row.trades)}
                             className="ml-2 text-[9px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded-full border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors cursor-pointer"
                           >
                             {row.trades.length}x partial ↗
