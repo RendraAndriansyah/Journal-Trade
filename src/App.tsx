@@ -6,12 +6,12 @@ import { BalanceForm } from './components/BalanceForm';
 import { ImportExport } from './components/ImportExport';
 import { TradeHistory } from './components/TradeHistory';
 import { db } from './db';
-import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table, BarChart2, Lock } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { calculatePips } from './utils/calculations';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'trade' | 'history' | 'balance' | 'import'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'manual' | 'history' | 'analytics' | 'import'>('dashboard');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
@@ -185,15 +185,15 @@ function App() {
           </button>
           
           <button 
-            onClick={() => setActiveTab('trade')}
+            onClick={() => setActiveTab('manual')}
             className={`flex-1 md:w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-lg transition-all ${
-              activeTab === 'trade' 
+              activeTab === 'manual' 
                 ? 'text-blue-400 md:bg-blue-600/10 md:border border-blue-500/20 md:shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
                 : 'text-gray-400 hover:bg-[#232936] hover:text-gray-200'
             }`}
           >
             <PlusCircle className="w-5 h-5 md:w-5 md:h-5" />
-            <span className="text-[10px] md:text-sm font-medium">Trade</span>
+            <span className="text-[10px] md:text-sm font-medium">Manual</span>
           </button>
 
           <button 
@@ -208,16 +208,17 @@ function App() {
             <span className="text-[10px] md:text-sm font-medium">History</span>
           </button>
 
-          <button 
-            onClick={() => setActiveTab('balance')}
-            className={`flex-1 md:w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-lg transition-all ${
-              activeTab === 'balance' 
-                ? 'text-blue-400 md:bg-blue-600/10 md:border border-blue-500/20 md:shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
-                : 'text-gray-400 hover:bg-[#232936] hover:text-gray-200'
-            }`}
+          {/* Analytics — coming soon, disabled */}
+          <button
+            disabled
+            className="flex-1 md:w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-lg opacity-40 cursor-not-allowed relative"
+            title="Analytics — coming soon"
           >
-            <Wallet className="w-5 h-5 md:w-5 md:h-5" />
-            <span className="text-[10px] md:text-sm font-medium">Balance</span>
+            <BarChart2 className="w-5 h-5 md:w-5 md:h-5 text-gray-500" />
+            <span className="text-[10px] md:text-sm font-medium text-gray-500">Analytics</span>
+            <span className="hidden md:inline-flex items-center gap-1 ml-auto text-[9px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full">
+              <Lock className="w-2.5 h-2.5" /> Soon
+            </span>
           </button>
 
           <button 
@@ -241,7 +242,11 @@ function App() {
           <header className="flex justify-between items-center mb-6 md:mb-8 border-b border-[#232936] pb-4 md:pb-5 text-left">
             <div>
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                {activeTab === 'dashboard' ? 'Analytics Dashboard' : activeTab === 'trade' ? 'Trade Entry Terminal' : activeTab === 'history' ? 'Trade Data Log' : activeTab === 'import' ? 'Sync Settings' : 'Balance Ledger'}
+                {activeTab === 'dashboard' ? 'Analytics Dashboard'
+                  : activeTab === 'manual' ? 'Manual Input'
+                  : activeTab === 'history' ? 'Trade Data Log'
+                  : activeTab === 'analytics' ? 'Analytics'
+                  : 'Sync Settings'}
               </h1>
               <p className="text-gray-500 text-xs md:text-sm mt-1">{activeAccount?.name || 'No Account Selected'}</p>
             </div>
@@ -273,17 +278,14 @@ function App() {
               </div>
             ) : activeTab === 'dashboard' ? (
               <Dashboard trades={trades} account={activeAccount} balanceLogs={balanceLogs} />
-            ) : activeTab === 'trade' ? (
-              <div className="max-w-3xl mx-auto">
+            ) : activeTab === 'manual' ? (
+              <div className="max-w-3xl mx-auto space-y-6">
                 <TradeForm accountId={activeAccount.id} onTradeAdded={() => setActiveTab('dashboard')} />
+                <BalanceForm accountId={activeAccount.id} />
               </div>
             ) : activeTab === 'history' ? (
               <div className="max-w-5xl mx-auto">
                 <TradeHistory accountId={activeAccount.id} />
-              </div>
-            ) : activeTab === 'balance' ? (
-              <div className="max-w-3xl mx-auto">
-                <BalanceForm accountId={activeAccount.id} />
               </div>
             ) : activeTab === 'import' ? (
               <div className="max-w-3xl mx-auto">
