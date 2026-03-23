@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ArrowUpRight, ArrowDownRight, Trash2, Filter } from 'lucide-react';
 import type { Trade } from '../types';
 
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const TradeHistory = ({ accountId }: Props) => {
-  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'lastDay' | 'all' | 'custom'>('lastDay');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -26,6 +26,14 @@ export const TradeHistory = ({ accountId }: Props) => {
 
   let filteredTrades = [...rawTrades];
 
+  // Find the last day that actually has trades (for 'lastDay' filter)
+  const lastTradingDate = useMemo(() => {
+    if (!rawTrades.length) return null;
+    // Sort descending and pick the date of the newest trade
+    const sorted = [...rawTrades].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+    return startOfDay(new Date(sorted[0].dateTime));
+  }, [rawTrades]);
+
   const handleDeleteFiltered = async () => {
     if (filteredTrades.length === 0) return;
     if (window.confirm(`Are you sure you want to permanently delete these ${filteredTrades.length} displayed trades?`)) {
@@ -36,6 +44,10 @@ export const TradeHistory = ({ accountId }: Props) => {
 
   if (dateFilter === 'today') {
     filteredTrades = filteredTrades.filter(t => isToday(new Date(t.dateTime)));
+  } else if (dateFilter === 'lastDay') {
+    if (lastTradingDate) {
+      filteredTrades = filteredTrades.filter(t => startOfDay(new Date(t.dateTime)).getTime() === lastTradingDate.getTime());
+    }
   } else if (dateFilter === 'custom') {
     const start = new Date(`${startDate}T00:00:00`).getTime();
     const end = new Date(`${endDate}T23:59:59`).getTime();
@@ -71,7 +83,8 @@ export const TradeHistory = ({ accountId }: Props) => {
           <Filter className="w-4 h-4" /> <span className="text-sm font-medium hidden sm:inline">Filters</span>
         </div>
         <select value={dateFilter} onChange={e => setDateFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none w-full sm:w-auto">
-          <option value="today">Today's Trades</option>
+          <option value="lastDay">Last Trading Day</option>
+          <option value="today">Today</option>
           <option value="all">All Days</option>
           <option value="custom">Custom Period</option>
         </select>

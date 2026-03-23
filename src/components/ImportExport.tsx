@@ -37,6 +37,24 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
 
     let skippedCount = 0;
 
+    // ─── PRE-PROCESSING PASS ───────────────────────────────────────────────────
+    // Detect partial-close sibling groups from JSON exports that have no `note`.
+    // Two `in` records sharing the same (symbol, type, timestamp, price) came
+    // from the same original position — so their combined lots = originalLots.
+    const inRecords = data.filter(r => r.action === 'in' || r.action === 'in ');
+    // Build a map: key → { totalLots, count }
+    const siblingMap = new Map<string, number>();
+    for (const r of inRecords) {
+      const key = `${r.symbol}|${r.type}|${r.timestamp}|${r.price}`;
+      siblingMap.set(key, (siblingMap.get(key) ?? 0) + r.lots);
+    }
+    // Stamp each `in` record with its group's total lots
+    for (const r of inRecords) {
+      const key = `${r.symbol}|${r.type}|${r.timestamp}|${r.price}`;
+      (r as any).groupOriginalLots = siblingMap.get(key)!;
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     for (const record of data) {
       if (record.type === 'balance' || record.action === 'balance') {
         const [datePart, timePart] = record.timestamp.split(' ');
@@ -127,13 +145,14 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
 
           // Verify if it's a partial close
           const pIn: any = pendingIn[inIdx];
-          const originalLots: number = pIn.originalLots ?? pIn.lots;
+          // groupOriginalLots = total lots of ALL closes sharing same entry (detected in pre-processing pass)
+          // This works even on old JSON exports that have no `note` field
+          const originalLots: number = pIn.groupOriginalLots ?? pIn.lots;
           const currentLots: number = pIn.lots;
           const remainingLots = Number((currentLots - record.lots).toFixed(2));
           
-          // It's a partial close if: closing fewer lots than currently open,
-          // OR this is a later closure of a position that was already partially closed
-          const isPartialClose = remainingLots > 0 || originalLots !== record.lots;
+          // It's a partial close if: closing fewer lots than the original full position size
+          const isPartialClose = Math.abs(originalLots - record.lots) > 0.001;
           closeNote = isPartialClose ? `Partial Close (${record.lots}/${originalLots} lots)` : "";
 
           if (remainingLots > 0) {
@@ -235,7 +254,8 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         symbol: t.pair,
         price: t.closingPrice,
         action: "out",
-        profit: t.pnl
+        profit: t.pnl,
+        note: t.note || ''
       });
     });
 
