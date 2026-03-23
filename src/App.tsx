@@ -12,6 +12,7 @@ import { calculatePips } from './utils/calculations';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'manual' | 'history' | 'analytics' | 'import'>('dashboard');
+  const [inputTab, setInputTab] = useState<'trade' | 'balance'>('trade');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
@@ -193,7 +194,7 @@ function App() {
             }`}
           >
             <PlusCircle className="w-5 h-5 md:w-5 md:h-5" />
-            <span className="text-[10px] md:text-sm font-medium">Manual</span>
+            <span className="text-[10px] md:text-sm font-medium">Input</span>
           </button>
 
           <button 
@@ -243,7 +244,7 @@ function App() {
             <div>
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
                 {activeTab === 'dashboard' ? 'Analytics Dashboard'
-                  : activeTab === 'manual' ? 'Manual Input'
+                  : activeTab === 'manual' ? 'Input'
                   : activeTab === 'history' ? 'Trade Data Log'
                   : activeTab === 'analytics' ? 'Analytics'
                   : 'Sync Settings'}
@@ -279,9 +280,37 @@ function App() {
             ) : activeTab === 'dashboard' ? (
               <Dashboard trades={trades} account={activeAccount} balanceLogs={balanceLogs} />
             ) : activeTab === 'manual' ? (
-              <div className="max-w-3xl mx-auto space-y-6">
-                <TradeForm accountId={activeAccount.id} onTradeAdded={() => setActiveTab('dashboard')} />
-                <BalanceForm accountId={activeAccount.id} />
+              <div className="max-w-3xl mx-auto">
+                {/* Sub-tab bar */}
+                <div className="flex gap-1 bg-[#0b0e14] border border-[#232936] rounded-xl p-1 mb-6">
+                  <button
+                    onClick={() => setInputTab('trade')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+                      inputTab === 'trade'
+                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.08)]'
+                        : 'text-gray-500 hover:text-gray-300 hover:bg-[#151a23]'
+                    }`}
+                  >
+                    <PlusCircle className="w-4 h-4" /> Log New Trade
+                  </button>
+                  <button
+                    onClick={() => setInputTab('balance')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+                      inputTab === 'balance'
+                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.08)]'
+                        : 'text-gray-500 hover:text-gray-300 hover:bg-[#151a23]'
+                    }`}
+                  >
+                    <Wallet className="w-4 h-4" /> Balance
+                  </button>
+                </div>
+
+                {/* Content */}
+                {inputTab === 'trade' ? (
+                  <TradeForm accountId={activeAccount.id} onTradeAdded={() => setActiveTab('dashboard')} />
+                ) : (
+                  <BalanceForm accountId={activeAccount.id} />
+                )}
               </div>
             ) : activeTab === 'history' ? (
               <div className="max-w-5xl mx-auto">
