@@ -293,7 +293,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                 </div>
 
               </div>
-              <p className="text-[10px] text-center text-gray-600 mt-1">
+              <p className="text-[10px] text-center text-yellow-600 mt-1">
                 RR Estimate: 1:{stats.avgLoss ? (stats.avgWin / stats.avgLoss).toFixed(2) : '–'}
               </p>
             </div>
