@@ -185,8 +185,6 @@ export const TradeHistory = ({ accountId }: Props) => {
   const allIdsForLayer = (lr: LayerRow) =>
     lr.rows.flatMap(r => r.trades.map(t => t.id));
 
-  // ─── Shared dialog backdrop ────────────────────────────────────────────────
-  const dialogOpen = partialDialog || layerDialog;
 
   return (
     <div className="card w-full overflow-hidden">
@@ -281,9 +279,12 @@ export const TradeHistory = ({ accountId }: Props) => {
                       <td className="px-3 py-2.5">
                         <span className="text-gray-500 text-xs">#{i+1}</span>
                         {row.isPartialGroup && (
-                          <span className="ml-2 text-[9px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded-full border border-indigo-500/20">
-                            {row.trades.length}x partial
-                          </span>
+                          <button
+                            onClick={() => { setLayerDialog(null); setTimeout(() => setPartialDialog(row.trades), 50); }}
+                            className="ml-2 text-[9px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded-full border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors cursor-pointer"
+                          >
+                            {row.trades.length}x partial ↗
+                          </button>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-gray-500">{format(parseISO(row.dateTime), 'HH:mm:ss')}</td>
@@ -368,9 +369,6 @@ export const TradeHistory = ({ accountId }: Props) => {
                 <tr key={lr.id} className="hover:bg-[#151a23] transition-colors">
                   <td className="px-4 py-3 text-sm text-gray-300">
                     {format(parseISO(lr.dateTime), 'MMM dd, yyyy HH:mm')}
-                    {lr.isLayer && (
-                      <span className="ml-2 text-[9px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/20 uppercase font-bold tracking-wide">Layer</span>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-200">{lr.pair}</td>
                   <td className="px-4 py-3 text-sm">
