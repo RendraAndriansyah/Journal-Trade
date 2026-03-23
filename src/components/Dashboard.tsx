@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Trade, Account, BalanceLog } from '../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity, ArrowDownCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from 'recharts';
+import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity } from 'lucide-react';
 import { format, parseISO, getDay } from 'date-fns';
 import { groupTradesIntoPositions } from '../utils/calculations';
 
@@ -106,6 +106,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       netPnL,
       winRate,
       totalTrades: positions.length,
+      winCount,
+      lossCount: positions.length - winCount,
       currentBalance,
       avgWin,
       avgLoss,
@@ -225,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                 <div className="bg-emerald-500/10 p-2 rounded-md">
                   <TrendingUp className="w-4 h-4 text-emerald-500"/>
                 </div>
-                <span className="text-sm text-gray-300">Avg Win</span>
+                <span className="text-sm text-gray-300">Avg Profit</span>
               </div>
               <span className="font-mono text-emerald-400">${stats.avgWin.toFixed(2)}</span>
             </div>
@@ -240,18 +242,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               <span className="font-mono text-rose-400">-${stats.avgLoss.toFixed(2)}</span>
             </div>
 
-            <div className="flex justify-between items-center bg-[#151a23] p-3 rounded-lg border border-[#232936] mt-2 border-l-2 border-l-rose-500">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#0b0e14] p-2 rounded-md">
-                  <ArrowDownCircle className="w-4 h-4 text-rose-500"/>
+            {/* Profit / Loss Pie Chart */}
+            <div className="bg-[#151a23] rounded-lg border border-[#232936] p-3">
+              <p className="text-xs text-gray-400 font-medium uppercase mb-3 text-center">Profit / Loss</p>
+              <div className="flex items-center justify-between gap-2">
+
+                {/* Left — Profit */}
+                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mb-1" />
+                  <span className="text-xs font-semibold text-emerald-400">{stats.winCount}</span>
+                  <span className="text-[10px] text-emerald-600/80">Profit</span>
                 </div>
-                <span className="text-sm text-gray-300">Max Drawdown</span>
+
+                {/* Centre — Donut Pie */}
+                <div className="flex-1">
+                  <ResponsiveContainer width="100%" height={100}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Profit', value: stats.winCount || 0 },
+                          { name: 'Loss',   value: stats.lossCount || 0 },
+                        ]}
+                        startAngle={90}
+                        endAngle={450}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={28}
+                        outerRadius={44}
+                        paddingAngle={stats.winCount > 0 && stats.lossCount > 0 ? 3 : 0}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#f43f5e" />
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px', fontSize: '11px' }}
+                        itemStyle={{ color: '#e5e7eb' }}
+                        formatter={(value: any) => [`${value} trades`]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Right — Loss */}
+                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mb-1" />
+                  <span className="text-xs font-semibold text-rose-400">{stats.lossCount}</span>
+                  <span className="text-[10px] text-rose-600/80">Loss</span>
+                </div>
+
               </div>
-              <span className="font-mono text-rose-400 font-bold">${stats.maxDrawdown.toFixed(2)}</span>
-            </div>
-            
-            <div className="text-xs text-center text-gray-500 mt-2">
-              Risk/Reward Estimate: 1:{stats.avgLoss ? (stats.avgWin / stats.avgLoss).toFixed(2) : '-'}
+              <p className="text-[10px] text-center text-gray-600 mt-1">
+                RR Estimate: 1:{stats.avgLoss ? (stats.avgWin / stats.avgLoss).toFixed(2) : '–'}
+              </p>
             </div>
           </div>
         </div>
