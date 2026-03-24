@@ -3,7 +3,7 @@ import type { Trade, Account, BalanceLog } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity, BarChart2, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
-  format, parseISO, getDay,
+  format, parseISO,
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths
 } from 'date-fns';
@@ -144,9 +144,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     let totalWinSize = 0;
     let totalLossSize = 0;
 
-    // Mon=1 … Fri=5 in getDay() (0=Sun,6=Sat)
-    // We want Mon→Fri display order, so map index 1..5
-    const pnlByDayMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    // Aggregate P&L by actual calendar date (yyyy-MM-dd), then sort chronologically
+    const pnlByDateMap: Record<string, number> = {};
 
     let currentBalance = account.initialBalance;
     let peakBalance    = account.initialBalance;
@@ -172,10 +171,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         netPnL += pnl;
 
         const tr = event.obj as Trade;
-        const dayIndex = getDay(parseISO(tr.dateTime)); // 0=Sun … 6=Sat
-        if (dayIndex >= 1 && dayIndex <= 5) {
-          pnlByDayMap[dayIndex] += pnl;
-        }
+        const dateKey = format(parseISO(tr.dateTime), 'yyyy-MM-dd');
+        pnlByDateMap[dateKey] = (pnlByDateMap[dateKey] ?? 0) + pnl;
+
       } else if (event.type === 'balance') {
         currentBalance += event.amount;
       }
@@ -207,12 +205,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     const avgWin    = winCount  > 0 ? totalWinSize  / winCount  : 0;
     const avgLoss   = lossCount > 0 ? totalLossSize / lossCount : 0;
 
-    // Mon-first order: indices 1,2,3,4,5 → Mon,Tue,Wed,Thu,Fri
-    const DAY_LABELS: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' };
-    const dayPerformance = [1, 2, 3, 4, 5].map(idx => ({
-      day: DAY_LABELS[idx],
-      pnl: parseFloat(pnlByDayMap[idx].toFixed(2))
-    }));
+    // Sort date keys chronologically → build bar chart array with label "Mar 20", "Mar 23" …
+    const dayPerformance = Object.keys(pnlByDateMap)
+      .sort()                                              // lexicographic on yyyy-MM-dd = chronological
+      .map(key => ({
+        day: format(parseISO(key), 'MMM dd'),             // e.g. "Mar 20"
+        pnl: parseFloat(pnlByDateMap[key].toFixed(2))
+      }));
 
     return {
       netPnL, winRate, totalTrades: positions.length, winCount,
@@ -386,7 +385,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <h3 className="text-gray-300 font-semibold flex items-center gap-2">
             <Layers className="w-5 h-5 text-indigo-500"/>
-            {dayView === 'bar' ? 'Profitability by Trading Day' : 'P&L Calendar'}
+            {dayView === 'bar' ? 'Profitability by Date' : 'P&L Calendar'}
           </h3>
 
           {/* Tab switcher */}
