@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Trade, Account, BalanceLog } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie } from 'recharts';
-import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity } from 'lucide-react';
-import { format, parseISO, getDay } from 'date-fns';
+import { TrendingUp, TrendingDown, Layers, Wallet, BarChart3, Activity, BarChart2, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  format, parseISO, getDay,
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths
+} from 'date-fns';
 import { groupTradesIntoLayers } from '../utils/calculations';
 
 interface DashboardProps {
@@ -11,9 +15,128 @@ interface DashboardProps {
   balanceLogs: BalanceLog[];
 }
 
+// ─── P&L Calendar ───────────────────────────────────────────────────────────
+const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
+  const [viewDate, setViewDate] = useState(new Date());
+
+  // Build a map: "yyyy-MM-dd" → total PnL
+  const pnlByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    trades.forEach(t => {
+      const key = format(parseISO(t.dateTime), 'yyyy-MM-dd');
+      map[key] = (map[key] ?? 0) + t.pnl;
+    });
+    return map;
+  }, [trades]);
+
+  // Calendar grid: start Monday of the first week of the month
+  const monthStart = startOfMonth(viewDate);
+  const monthEnd   = endOfMonth(viewDate);
+  const gridStart  = startOfWeek(monthStart, { weekStartsOn: 1 }); // Mon
+  const gridEnd    = endOfWeek(monthEnd,     { weekStartsOn: 1 }); // Sun
+  const allDays    = eachDayOfInterval({ start: gridStart, end: gridEnd });
+
+  const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  return (
+    <div className="space-y-4">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setViewDate(d => subMonths(d, 1))}
+          className="p-2 rounded-lg bg-[#0b0e14] border border-[#232936] text-gray-400 hover:text-white hover:bg-[#232936] transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-gray-200 font-semibold text-sm">
+          {format(viewDate, 'MMMM yyyy')}
+        </span>
+        <button
+          onClick={() => setViewDate(d => addMonths(d, 1))}
+          className="p-2 rounded-lg bg-[#0b0e14] border border-[#232936] text-gray-400 hover:text-white hover:bg-[#232936] transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className="overflow-x-auto">
+        <div className="grid grid-cols-7 min-w-[560px]">
+          {/* Day headers */}
+          {DAY_HEADERS.map(h => (
+            <div key={h} className="text-center text-xs font-semibold text-gray-500 uppercase pb-2 border-b border-[#232936]">
+              {h}
+            </div>
+          ))}
+
+          {/* Day cells */}
+          {allDays.map(day => {
+            const key   = format(day, 'yyyy-MM-dd');
+            const pnl   = pnlByDate[key];
+            const isCurrentMonth = isSameMonth(day, viewDate);
+            const today = isToday(day);
+
+            const hasPnl  = pnl !== undefined;
+            const isProfit = hasPnl && pnl > 0;
+            const isLoss   = hasPnl && pnl < 0;
+
+            return (
+              <div
+                key={key}
+                className={`min-h-[72px] p-2 border-b border-r border-[#1c2130] flex flex-col justify-between
+                  ${!isCurrentMonth ? 'opacity-30' : ''}
+                  ${today ? 'ring-1 ring-inset ring-blue-500/40 bg-blue-500/5' : ''}
+                  ${isProfit ? 'bg-emerald-500/5' : isLoss ? 'bg-rose-500/5' : ''}
+                `}
+              >
+                {/* Date number */}
+                <span className={`text-xs font-semibold leading-none
+                  ${today ? 'text-blue-400' : isCurrentMonth ? 'text-gray-400' : 'text-gray-600'}
+                `}>
+                  {format(day, 'd')}
+                </span>
+
+                {/* PnL value */}
+                {hasPnl && (
+                  <div className="mt-1">
+                    <span className={`block text-xs font-bold font-mono leading-tight
+                      ${isProfit ? 'text-emerald-400' : 'text-rose-400'}
+                    `}>
+                      {isProfit ? '+' : ''}${pnl.toFixed(2)}
+                    </span>
+                    {/* Micro color bar */}
+                    <div className={`mt-1 h-1 rounded-full w-full
+                      ${isProfit ? 'bg-emerald-500/50' : 'bg-rose-500/50'}
+                    `} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-gray-500 pt-1">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/50 inline-block" /> Profit day
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/50 inline-block" /> Loss day
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm ring-1 ring-blue-500/50 inline-block" /> Today
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Dashboard ──────────────────────────────────────────────────────────
 export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLogs }) => {
+  const [dayView, setDayView] = useState<'bar' | 'calendar'>('bar');
+
   const stats = useMemo(() => {
-    // Group: partial closes → positions → layers (orders within 15 s = 1 trade)
     const positions = groupTradesIntoLayers(trades);
 
     let winCount = 0;
@@ -21,27 +144,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     let totalWinSize = 0;
     let totalLossSize = 0;
 
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const pnlByDayArray = new Array(7).fill(0);
+    // Mon=1 … Fri=5 in getDay() (0=Sun,6=Sat)
+    // We want Mon→Fri display order, so map index 1..5
+    const pnlByDayMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-    // Initial timeline starts with initial balance
     let currentBalance = account.initialBalance;
-    let peakBalance = account.initialBalance;
-    let maxDrawdown = 0;
-    
+    let peakBalance    = account.initialBalance;
+    let maxDrawdown    = 0;
+
     const timeline = [
       ...trades.map(t => ({ date: t.dateTime, pnl: t.pnl, type: 'trade' as const, obj: t })),
       ...balanceLogs.map(b => ({ date: b.dateTime, amount: b.type === 'Deposit' ? b.amount : -b.amount, type: 'balance' as const, obj: b }))
-    ].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const chartData: { date: string; balance: number; pnl: number }[] = [];
-    
+
     if (timeline.length === 0) {
-      chartData.push({
-        date: format(new Date(), 'MMM dd HH:mm'),
-        balance: currentBalance,
-        pnl: 0
-      });
+      chartData.push({ date: format(new Date(), 'MMM dd HH:mm'), balance: currentBalance, pnl: 0 });
     }
 
     timeline.forEach(event => {
@@ -53,21 +172,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         netPnL += pnl;
 
         const tr = event.obj as Trade;
-        const day = getDay(parseISO(tr.dateTime));
-        pnlByDayArray[day] += pnl;
-
+        const dayIndex = getDay(parseISO(tr.dateTime)); // 0=Sun … 6=Sat
+        if (dayIndex >= 1 && dayIndex <= 5) {
+          pnlByDayMap[dayIndex] += pnl;
+        }
       } else if (event.type === 'balance') {
         currentBalance += event.amount;
       }
 
-      if (currentBalance > peakBalance) {
-        peakBalance = currentBalance;
-      }
-      
+      if (currentBalance > peakBalance) peakBalance = currentBalance;
       const drawdown = peakBalance - currentBalance;
-      if (drawdown > maxDrawdown) {
-        maxDrawdown = drawdown;
-      }
+      if (drawdown > maxDrawdown) maxDrawdown = drawdown;
 
       chartData.push({
         date: format(parseISO(event.date), 'MMM dd HH:mm'),
@@ -76,9 +191,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       });
     });
 
-    // Count wins/losses at POSITION level (partial closes merged)
     for (const pos of positions) {
-      netPnL; // already summed from raw trades above — keep equity curve accurate
       if (pos.totalPnl > 0) {
         winCount++;
         totalWinSize += pos.totalPnl;
@@ -86,34 +199,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         totalLossSize += Math.abs(pos.totalPnl);
       }
     }
-    // Recalculate netPnL from positions to avoid double-count
-    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0) +
-             balanceLogs.reduce((s, b) => b.type === 'Deposit' ? s : s - b.amount, 0);
-    // Restore: netPnL = total pnl from trades only (not balance logs)
+
     netPnL = positions.reduce((s, p) => s + p.totalPnl, 0);
 
     const lossCount = positions.length - winCount;
-    const winRate = positions.length > 0 ? (winCount / positions.length) * 100 : 0;
-    const avgWin = winCount > 0 ? totalWinSize / winCount : 0;
-    const avgLoss = lossCount > 0 ? totalLossSize / lossCount : 0;
+    const winRate   = positions.length > 0 ? (winCount / positions.length) * 100 : 0;
+    const avgWin    = winCount  > 0 ? totalWinSize  / winCount  : 0;
+    const avgLoss   = lossCount > 0 ? totalLossSize / lossCount : 0;
 
-    const dayPerformance = dayNames.map((day, idx) => ({
-      day,
-      pnl: parseFloat(pnlByDayArray[idx].toFixed(2))
-    })).filter(d => d.day !== 'Sun' && d.day !== 'Sat');
+    // Mon-first order: indices 1,2,3,4,5 → Mon,Tue,Wed,Thu,Fri
+    const DAY_LABELS: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' };
+    const dayPerformance = [1, 2, 3, 4, 5].map(idx => ({
+      day: DAY_LABELS[idx],
+      pnl: parseFloat(pnlByDayMap[idx].toFixed(2))
+    }));
 
     return {
-      netPnL,
-      winRate,
-      totalTrades: positions.length,
-      winCount,
-      lossCount: positions.length - winCount,
-      currentBalance,
-      avgWin,
-      avgLoss,
-      maxDrawdown,
-      chartData,
-      dayPerformance
+      netPnL, winRate, totalTrades: positions.length, winCount,
+      lossCount, currentBalance, avgWin, avgLoss, maxDrawdown,
+      chartData, dayPerformance
     };
   }, [trades, account, balanceLogs]);
 
@@ -173,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
 
       {/* Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chart */}
+        {/* Equity Curve */}
         <div className="card lg:col-span-2">
           <h3 className="text-gray-300 font-semibold mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500"/> Equity Curve
@@ -182,31 +286,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#232936" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#4b5563" 
-                  fontSize={10} 
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#4b5563" 
-                  fontSize={10}
-                  tickFormatter={(value: number) => `$${value}`}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip 
+                <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(value: number) => `$${value}`} tickLine={false} axisLine={false} />
+                <Tooltip
                   contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px' }}
                   itemStyle={{ color: '#e5e7eb' }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Balance']}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="balance" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
+                <Line
+                  type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3}
                   dot={{ r: 2, fill: '#3b82f6', strokeWidth: 2 }}
                   activeDot={{ r: 6, fill: '#60a5fa', stroke: '#151a23', strokeWidth: 3 }}
                 />
@@ -215,13 +304,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
           </div>
         </div>
 
-        {/* Detailed Stats Cards */}
+        {/* Performance Metrics + Donut */}
         <div className="space-y-4">
           <div className="card bg-[#0f121b] flex flex-col justify-center h-full gap-4">
             <h3 className="text-gray-300 font-semibold border-b border-[#232936] pb-3 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-emerald-500"/> Performance Metrics
             </h3>
-            
+
             <div className="flex justify-between items-center bg-[#151a23] p-3 rounded-lg border border-[#232936]">
               <div className="flex items-center gap-3">
                 <div className="bg-emerald-500/10 p-2 rounded-md">
@@ -242,36 +331,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               <span className="font-mono text-rose-400">-${stats.avgLoss.toFixed(2)}</span>
             </div>
 
-            {/* Profit / Loss Pie Chart */}
+            {/* Profit / Loss Pie */}
             <div className="bg-[#151a23] rounded-lg border border-[#232936] p-3">
               <p className="text-xs text-gray-400 font-medium uppercase mb-3 text-center">Profit / Loss</p>
               <div className="flex items-center justify-between gap-2">
-
-                {/* Left — Profit */}
                 <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mb-1" />
                   <span className="text-xs font-semibold text-emerald-400">{stats.winCount}</span>
                   <span className="text-[10px] text-emerald-600/80">Profit</span>
                 </div>
-
-                {/* Centre — Donut Pie */}
                 <div className="flex-1">
                   <ResponsiveContainer width="100%" height={100}>
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Profit', value: stats.winCount || 0 },
+                          { name: 'Profit', value: stats.winCount  || 0 },
                           { name: 'Loss',   value: stats.lossCount || 0 },
                         ]}
-                        startAngle={90}
-                        endAngle={450}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={28}
-                        outerRadius={44}
+                        startAngle={90} endAngle={450}
+                        cx="50%" cy="50%"
+                        innerRadius={28} outerRadius={44}
                         paddingAngle={stats.winCount > 0 && stats.lossCount > 0 ? 3 : 0}
-                        dataKey="value"
-                        strokeWidth={0}
+                        dataKey="value" strokeWidth={0}
                       >
                         <Cell fill="#10b981" />
                         <Cell fill="#f43f5e" />
@@ -279,19 +360,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                       <Tooltip
                         contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px', fontSize: '11px' }}
                         itemStyle={{ color: '#e5e7eb' }}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         formatter={(value: any) => [`${value} trades`]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-
-                {/* Right — Loss */}
                 <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mb-1" />
                   <span className="text-xs font-semibold text-rose-400">{stats.lossCount}</span>
                   <span className="text-[10px] text-rose-600/80">Loss</span>
                 </div>
-
               </div>
               <p className="text-[10px] text-center text-yellow-600 mt-1">
                 RR Estimate: 1:{stats.avgLoss ? (stats.avgWin / stats.avgLoss).toFixed(2) : '–'}
@@ -301,32 +380,70 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         </div>
       </div>
 
-      {/* Week Day Performance */}
+      {/* Profitability Panel — Bar Chart ↔ Calendar */}
       <div className="card">
-        <h3 className="text-gray-300 font-semibold mb-6 flex items-center gap-2">
-          <Layers className="w-5 h-5 text-indigo-500"/> Profitability by Trading Day
-        </h3>
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.dayPerformance} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#232936" vertical={false} />
-              <XAxis dataKey="day" stroke="#4b5563" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val: number) => `$${val}`} tickLine={false} axisLine={false} />
-              <Tooltip 
-                cursor={{ fill: '#1f2937', opacity: 0.4 }}
-                contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px' }}
-                itemStyle={{ color: '#e5e7eb' }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'PnL']}
-              />
-              <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                {stats.dayPerformance.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#f43f5e'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Panel header + tab switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <h3 className="text-gray-300 font-semibold flex items-center gap-2">
+            <Layers className="w-5 h-5 text-indigo-500"/>
+            {dayView === 'bar' ? 'Profitability by Trading Day' : 'P&L Calendar'}
+          </h3>
+
+          {/* Tab switcher */}
+          <div className="flex gap-1 bg-[#0b0e14] border border-[#232936] rounded-lg p-1 self-start sm:self-auto">
+            <button
+              onClick={() => setDayView('bar')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                dayView === 'bar'
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-[#151a23]'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> Bar Chart
+            </button>
+            <button
+              onClick={() => setDayView('calendar')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                dayView === 'calendar'
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-[#151a23]'
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" /> Calendar
+            </button>
+          </div>
         </div>
+
+        {/* Bar Chart view */}
+        {dayView === 'bar' && (
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={stats.dayPerformance}
+                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#232936" vertical={false} />
+                <XAxis dataKey="day" stroke="#4b5563" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val: number) => `$${val}`} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: '#1f2937', opacity: 0.4 }}
+                  contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px' }}
+                  itemStyle={{ color: '#e5e7eb' }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'PnL']}
+                />
+                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                  {stats.dayPerformance.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#10b981' : '#f43f5e'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Calendar view */}
+        {dayView === 'calendar' && <PnLCalendar trades={trades} />}
       </div>
     </div>
   );
