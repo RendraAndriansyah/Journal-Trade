@@ -29,7 +29,7 @@ export interface BalanceLog {
   id: string;
   accountId: string;
   dateTime: string;
-  type: 'Deposit' | 'Withdrawal';
+  type: 'Deposit' | 'Withdrawal' | 'Compensation';
   amount: number;
   note?: string;
 }

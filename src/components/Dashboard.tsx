@@ -153,7 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
 
     const timeline = [
       ...trades.map(t => ({ date: t.dateTime, pnl: t.pnl, type: 'trade' as const, obj: t })),
-      ...balanceLogs.map(b => ({ date: b.dateTime, amount: b.type === 'Deposit' ? b.amount : -b.amount, type: 'balance' as const, obj: b }))
+      ...balanceLogs.map(b => ({ date: b.dateTime, amount: b.type === 'Withdrawal' ? -b.amount : b.amount, type: 'balance' as const, obj: b }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const chartData: { date: string; balance: number; pnl: number }[] = [];

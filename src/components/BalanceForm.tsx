@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Wallet, Target, DollarSign, ListOrdered, ArrowUpCircle, ArrowDownCircle, Calendar, Edit3, Trash2, X } from 'lucide-react';
+import { Wallet, Target, DollarSign, ListOrdered, ArrowUpCircle, ArrowDownCircle, ShieldCheck, Calendar, Edit3, Trash2, X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO } from 'date-fns';
 import type { BalanceLog } from '../types';
@@ -12,7 +12,7 @@ interface Props {
 
 export const BalanceForm = ({ accountId }: Props) => {
   const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'Deposit' | 'Withdrawal'>('Deposit');
+  const [type, setType] = useState<'Deposit' | 'Withdrawal' | 'Compensation'>('Deposit');
   const [note, setNote] = useState('');
   const [dateTime, setDateTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -105,11 +105,23 @@ export const BalanceForm = ({ accountId }: Props) => {
                 >
                   <ArrowDownCircle className="w-4 h-4 inline mr-1"/> Withdrawal
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setType('Compensation')}
+                  className={`flex-1 py-2 text-sm font-medium transition-all border-l border-[#232936] ${type === 'Compensation' ? 'bg-amber-500/10 text-amber-400' : 'bg-[#0b0e14] text-gray-500 hover:text-gray-300'}`}
+                >
+                  <ShieldCheck className="w-4 h-4 inline mr-1"/> Compensation
+                </button>
               </div>
+              {type === 'Compensation' && (
+                <p className="text-[11px] text-amber-500/70 mt-1.5">
+                  Broker negative-balance protection payout (e.g. MT5 stop-out compensation).
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="label-text flex items-center gap-1.5"><Calendar className="w-4 h-4"/> Date & Time</label>
+              <label className="label-text flex items-center gap-1.5"><Calendar className="w-4 h-4"/> Date &amp; Time</label>
               <input 
                 type="datetime-local" 
                 value={dateTime} 
@@ -174,8 +186,16 @@ export const BalanceForm = ({ accountId }: Props) => {
              balanceLogs.map((log: BalanceLog) => (
                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[#0b0e14] border border-[#232936] rounded-lg gap-3 sm:gap-0">
                  <div className="flex items-center gap-3">
-                   <div className={`p-2 rounded-full ${log.type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                     {log.type === 'Deposit' ? <ArrowUpCircle className="w-4 h-4"/> : <ArrowDownCircle className="w-4 h-4"/>}
+                   <div className={`p-2 rounded-full ${
+                     log.type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-500'
+                     : log.type === 'Compensation' ? 'bg-amber-500/10 text-amber-500'
+                     : 'bg-rose-500/10 text-rose-500'
+                   }`}>
+                     {log.type === 'Deposit'
+                       ? <ArrowUpCircle className="w-4 h-4"/>
+                       : log.type === 'Compensation'
+                         ? <ShieldCheck className="w-4 h-4"/>
+                         : <ArrowDownCircle className="w-4 h-4"/>}
                    </div>
                    <div>
                      <div className="text-sm font-medium text-gray-200">{log.type}</div>
@@ -184,8 +204,12 @@ export const BalanceForm = ({ accountId }: Props) => {
                  </div>
                  
                  <div className="flex items-center justify-between sm:justify-end gap-5">
-                   <div className={`font-mono font-bold ${log.type === 'Deposit' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                     {log.type === 'Deposit' ? '+' : '-'}${log.amount.toFixed(2)}
+                   <div className={`font-mono font-bold ${
+                     log.type === 'Withdrawal' ? 'text-rose-400'
+                     : log.type === 'Compensation' ? 'text-amber-400'
+                     : 'text-emerald-400'
+                   }`}>
+                     {log.type === 'Withdrawal' ? '-' : '+'}${log.amount.toFixed(2)}
                    </div>
                    <div className="flex items-center gap-2">
                      <button title="Edit" onClick={() => handleEdit(log)} className="p-1.5 text-gray-500 hover:text-blue-400 bg-[#151a23] rounded-lg border border-[#232936] transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5"/></button>
