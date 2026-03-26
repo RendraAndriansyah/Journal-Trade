@@ -58,6 +58,12 @@ function App() {
       : []
   , [selectedAccountId]) || [];
 
+  const dailyNotes = useLiveQuery(() =>
+    selectedAccountId 
+      ? db.dailyNotes.where('accountId').equals(selectedAccountId).toArray() 
+      : []
+  , [selectedAccountId]) || [];
+
   const deleteAccount = async () => {
     if (window.confirm('Are you sure you want to completely delete this account and all its data?')) {
       if (selectedAccountId) {
@@ -284,7 +290,7 @@ function App() {
                 </button>
               </div>
             ) : activeTab === 'dashboard' ? (
-              <Dashboard trades={trades} account={activeAccount} balanceLogs={balanceLogs} />
+              <Dashboard trades={trades} account={activeAccount} balanceLogs={balanceLogs} dailyNotes={dailyNotes} />
             ) : activeTab === 'manual' ? (
               <div className="max-w-3xl mx-auto">
                 {/* Sub-tab bar */}

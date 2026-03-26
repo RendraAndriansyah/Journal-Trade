@@ -33,3 +33,12 @@ export interface BalanceLog {
   amount: number;
   note?: string;
 }
+
+export interface DailyNote {
+  id: string;
+  accountId: string;
+  date: string; // yyyy-MM-dd
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}

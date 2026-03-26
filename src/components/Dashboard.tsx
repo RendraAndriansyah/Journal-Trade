@@ -8,16 +8,24 @@ import {
   eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths
 } from 'date-fns';
 import { groupTradesIntoLayers } from '../utils/calculations';
+import { db } from '../db';
+import { v4 as uuidv4 } from 'uuid';
+import type { DailyNote } from '../types';
+import { StickyNote, X, Save, MessageSquare, PlusCircle } from 'lucide-react';
 
 interface DashboardProps {
   trades: Trade[];
   account: Account;
   balanceLogs: BalanceLog[];
+  dailyNotes: DailyNote[];
 }
 
 // ─── P&L Calendar ───────────────────────────────────────────────────────────
-const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
+const PnLCalendar = ({ trades, dailyNotes, accountId }: { trades: Trade[]; dailyNotes: DailyNote[]; accountId: string }) => {
   const [viewDate, setViewDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
 
   // Build a map: "yyyy-MM-dd" → total PnL
   const pnlByDate = useMemo(() => {
@@ -29,6 +37,15 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
     return map;
   }, [trades]);
 
+  // Build a map: "yyyy-MM-dd" → DailyNote
+  const notesByDate = useMemo(() => {
+    const map: Record<string, DailyNote> = {};
+    dailyNotes.forEach(n => {
+      map[n.date] = n;
+    });
+    return map;
+  }, [dailyNotes]);
+
   // Calendar grid: start Monday of the first week of the month
   const monthStart = startOfMonth(viewDate);
   const monthEnd   = endOfMonth(viewDate);
@@ -37,6 +54,37 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
   const allDays    = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const handleDateClick = (day: Date) => {
+    const dateKey = format(day, 'yyyy-MM-dd');
+    const existingNote = notesByDate[dateKey];
+    setSelectedDate(day);
+    setNoteContent(existingNote?.content || '');
+    setIsNoteModalOpen(true);
+  };
+
+  const handleSaveNote = async () => {
+    if (!selectedDate) return;
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    const existingNote = notesByDate[dateKey];
+
+    if (existingNote) {
+      await db.dailyNotes.update(existingNote.id, {
+        content: noteContent,
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      await db.dailyNotes.add({
+        id: uuidv4(),
+        accountId,
+        date: dateKey,
+        content: noteContent,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    setIsNoteModalOpen(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -48,9 +96,12 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <span className="text-gray-200 font-semibold text-sm">
-          {format(viewDate, 'MMMM yyyy')}
-        </span>
+        <div className="flex flex-col items-center">
+          <span className="text-gray-200 font-semibold text-sm">
+            {format(viewDate, 'MMMM yyyy')}
+          </span>
+          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Trading Dairy Diary</span>
+        </div>
         <button
           onClick={() => setViewDate(d => addMonths(d, 1))}
           className="p-2 rounded-lg bg-[#0b0e14] border border-[#232936] text-gray-400 hover:text-white hover:bg-[#232936] transition-colors"
@@ -61,10 +112,10 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
 
       {/* Grid */}
       <div className="overflow-x-auto">
-        <div className="grid grid-cols-7 min-w-[560px]">
+        <div className="grid grid-cols-7 min-w-[560px] border-t border-l border-[#1c2130]">
           {/* Day headers */}
           {DAY_HEADERS.map(h => (
-            <div key={h} className="text-center text-xs font-semibold text-gray-500 uppercase pb-2 border-b border-[#232936]">
+            <div key={h} className="text-center text-[10px] font-bold text-gray-500 uppercase py-2 bg-[#0b0e14] border-b border-r border-[#1c2130]">
               {h}
             </div>
           ))}
@@ -73,6 +124,7 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
           {allDays.map(day => {
             const key   = format(day, 'yyyy-MM-dd');
             const pnl   = pnlByDate[key];
+            const note  = notesByDate[key];
             const isCurrentMonth = isSameMonth(day, viewDate);
             const today = isToday(day);
 
@@ -83,33 +135,47 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
             return (
               <div
                 key={key}
-                className={`min-h-[72px] p-2 border-b border-r border-[#1c2130] flex flex-col justify-between
-                  ${!isCurrentMonth ? 'opacity-30' : ''}
-                  ${today ? 'ring-1 ring-inset ring-blue-500/40 bg-blue-500/5' : ''}
+                onClick={() => handleDateClick(day)}
+                className={`min-h-[84px] p-2 border-b border-r border-[#1c2130] flex flex-col justify-between cursor-pointer transition-all hover:bg-white/5 group relative
+                  ${!isCurrentMonth ? 'opacity-20' : ''}
+                  ${today ? 'bg-blue-500/5 ring-1 ring-inset ring-blue-500/20' : ''}
                   ${isProfit ? 'bg-emerald-500/5' : isLoss ? 'bg-rose-500/5' : ''}
                 `}
               >
                 {/* Date number */}
-                <span className={`text-xs font-semibold leading-none
-                  ${today ? 'text-blue-400' : isCurrentMonth ? 'text-gray-400' : 'text-gray-600'}
-                `}>
-                  {format(day, 'd')}
-                </span>
+                <div className="flex justify-between items-start">
+                  <span className={`text-xs font-bold leading-none
+                    ${today ? 'text-blue-400' : isCurrentMonth ? 'text-gray-400' : 'text-gray-600'}
+                  `}>
+                    {format(day, 'd')}
+                  </span>
+                  
+                  {note && (
+                    <div className="text-indigo-400" title={note.content}>
+                      <StickyNote className="w-3 h-3" />
+                    </div>
+                  )}
+                </div>
 
                 {/* PnL value */}
-                {hasPnl && (
-                  <div className="mt-1">
-                    <span className={`block text-xs font-bold font-mono leading-tight
-                      ${isProfit ? 'text-emerald-400' : 'text-rose-400'}
-                    `}>
-                      {isProfit ? '+' : ''}${pnl.toFixed(2)}
-                    </span>
-                    {/* Micro color bar */}
-                    <div className={`mt-1 h-1 rounded-full w-full
-                      ${isProfit ? 'bg-emerald-500/50' : 'bg-rose-500/50'}
-                    `} />
-                  </div>
-                )}
+                <div className="flex flex-col justify-end h-full mt-1">
+                  {hasPnl ? (
+                    <div>
+                      <span className={`block text-[11px] font-bold font-mono leading-tight
+                        ${isProfit ? 'text-emerald-400' : 'text-rose-400'}
+                      `}>
+                        {isProfit ? '+' : ''}${pnl.toFixed(2)}
+                      </span>
+                      <div className={`mt-1 h-1 rounded-full w-full
+                        ${isProfit ? 'bg-emerald-500/40' : 'bg-rose-500/40'}
+                      `} />
+                    </div>
+                  ) : (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-center">
+                       <PlusCircle className="w-4 h-4 text-gray-600" />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -117,23 +183,87 @@ const PnLCalendar = ({ trades }: { trades: Trade[] }) => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-gray-500 pt-1">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/50 inline-block" /> Profit day
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/50 inline-block" /> Loss day
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm ring-1 ring-blue-500/50 inline-block" /> Today
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-4 text-[10px] text-gray-500 pt-1">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/30 inline-block" /> Profit
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/30 inline-block" /> Loss
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm ring-1 ring-blue-500/30 inline-block" /> Today
+          </span>
+          <span className="flex items-center gap-1.5">
+            <StickyNote className="w-2.5 h-2.5 text-indigo-400" /> Note
+          </span>
+        </div>
+        <span className="italic text-gray-600 font-medium tracking-tight">Click date to add trade diary note</span>
       </div>
+
+      {/* Note Modal */}
+      {isNoteModalOpen && selectedDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[#151a23] border border-[#232936] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#232936] flex items-center justify-between bg-[#1a202c]/50">
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-500/20 p-2 rounded-xl">
+                  <StickyNote className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold">Daily Trade Diary</h3>
+                  <p className="text-xs text-gray-400">{format(selectedDate, 'EEEE, dd MMMM yyyy')}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsNoteModalOpen(false)}
+                className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">What happened today?</span>
+                </div>
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Today I feel..."
+                  className="w-full h-48 bg-[#0b0e14] border border-[#232936] rounded-xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none shadow-inner"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsNoteModalOpen(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border border-[#232936] text-gray-400 font-semibold hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveNote}
+                  className="flex-[2] px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                >
+                  <Save className="w-4 h-4" /> Save Note
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
-export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLogs }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLogs, dailyNotes }) => {
   const [dayView, setDayView] = useState<'bar' | 'calendar'>('bar');
 
   const stats = useMemo(() => {
@@ -442,7 +572,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         )}
 
         {/* Calendar view */}
-        {dayView === 'calendar' && <PnLCalendar trades={trades} />}
+        {dayView === 'calendar' && <PnLCalendar trades={trades} dailyNotes={dailyNotes} accountId={account.id} />}
       </div>
     </div>
   );
