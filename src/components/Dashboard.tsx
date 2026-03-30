@@ -271,6 +271,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     const positions = groupTradesIntoLayers(trades);
 
     let winCount = 0;
+    let beCount = 0;
     let netPnL = 0;
     let totalWinSize = 0;
     let totalLossSize = 0;
@@ -320,8 +321,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       });
     });
 
+    // Break Even threshold: 20 (adjust to 20000 for IDR)
+    const beThreshold = account.currency.includes('IDR') || account.currency.includes('Rp') ? 20000 : 20;
+
     for (const pos of positions) {
-      if (pos.totalPnl > 0) {
+      if (Math.abs(pos.totalPnl) < beThreshold) {
+        beCount++;
+      } else if (pos.totalPnl > 0) {
         winCount++;
         totalWinSize += pos.totalPnl;
       } else if (pos.totalPnl < 0) {
@@ -331,8 +337,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
 
     netPnL = positions.reduce((s, p) => s + p.totalPnl, 0);
 
-    const lossCount = positions.length - winCount;
-    const winRate   = positions.length > 0 ? (winCount / positions.length) * 100 : 0;
+    const lossCount = positions.length - winCount - beCount;
+    const totalDecisiveTrades = winCount + lossCount;
+    const winRate   = totalDecisiveTrades > 0 ? (winCount / totalDecisiveTrades) * 100 : 0;
     const avgWin    = winCount  > 0 ? totalWinSize  / winCount  : 0;
     const avgLoss   = lossCount > 0 ? totalLossSize / lossCount : 0;
 
@@ -345,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       }));
 
     return {
-      netPnL, winRate, totalTrades: positions.length, winCount,
+      netPnL, winRate, totalTrades: positions.length, winCount, beCount,
       lossCount, currentBalance, avgWin, avgLoss, maxDrawdown,
       chartData, dayPerformance
     };
@@ -470,27 +477,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                   <span className="text-xs font-semibold text-emerald-400">{stats.winCount}</span>
                   <span className="text-[10px] text-emerald-600/80">Profit</span>
                 </div>
+                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-400 mb-1" />
+                  <span className="text-xs font-semibold text-slate-300">{stats.beCount}</span>
+                  <span className="text-[10px] text-slate-500">BE</span>
+                </div>
                 <div className="flex-1">
                   <ResponsiveContainer width="100%" height={100}>
                     <PieChart>
                       <Pie
                         data={[
                           { name: 'Profit', value: stats.winCount  || 0 },
+                          { name: 'BE',     value: stats.beCount || 0 },
                           { name: 'Loss',   value: stats.lossCount || 0 },
-                        ]}
+                        ].filter(d => d.value > 0)}
                         startAngle={90} endAngle={450}
                         cx="50%" cy="50%"
                         innerRadius={28} outerRadius={44}
-                        paddingAngle={stats.winCount > 0 && stats.lossCount > 0 ? 3 : 0}
+                        paddingAngle={3}
                         dataKey="value" strokeWidth={0}
                       >
-                        <Cell fill="#10b981" />
-                        <Cell fill="#f43f5e" />
+                        {[
+                          { name: 'Profit', value: stats.winCount },
+                          { name: 'BE',     value: stats.beCount },
+                          { name: 'Loss',   value: stats.lossCount }
+                        ].filter(d => d.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.name === 'Profit' ? '#10b981' : entry.name === 'BE' ? '#94a3b8' : '#f43f5e'} />
+                        ))}
                       </Pie>
                       <Tooltip
                         contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px', fontSize: '11px' }}
                         itemStyle={{ color: '#e5e7eb' }}
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         formatter={(value: any) => [`${value} trades`]}
                       />
                     </PieChart>
