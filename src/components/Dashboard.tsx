@@ -12,6 +12,7 @@ import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
 import type { DailyNote } from '../types';
 import { StickyNote, X, Save, MessageSquare, PlusCircle } from 'lucide-react';
+import { formatCurrencyValue, formatCurrencyWithSign, getCurrencySymbol } from '../utils/currency';
 
 interface DashboardProps {
   trades: Trade[];
@@ -21,7 +22,7 @@ interface DashboardProps {
 }
 
 // ─── P&L Calendar ───────────────────────────────────────────────────────────
-const PnLCalendar = ({ trades, dailyNotes, accountId }: { trades: Trade[]; dailyNotes: DailyNote[]; accountId: string }) => {
+const PnLCalendar = ({ trades, dailyNotes, accountId, currency }: { trades: Trade[]; dailyNotes: DailyNote[]; accountId: string; currency: string }) => {
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -164,7 +165,7 @@ const PnLCalendar = ({ trades, dailyNotes, accountId }: { trades: Trade[]; daily
                       <span className={`block text-[11px] font-bold font-mono leading-tight
                         ${isProfit ? 'text-emerald-400' : 'text-rose-400'}
                       `}>
-                        {isProfit ? '+' : ''}${pnl.toFixed(2)}
+                        {formatCurrencyWithSign(pnl, currency)}
                       </span>
                       <div className={`mt-1 h-1 rounded-full w-full
                         ${isProfit ? 'bg-emerald-500/40' : 'bg-rose-500/40'}
@@ -360,7 +361,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
             <Wallet className="w-5 h-5 opacity-50" />
           </div>
           <div className="text-3xl font-bold font-mono tracking-tight text-white mb-1">
-            ${stats.currentBalance.toFixed(2)}
+            {formatCurrencyValue(stats.currentBalance, account.currency)}
           </div>
           <div className="text-xs text-blue-400/80">Account Equity · <span className="font-semibold">{account.currency}</span></div>
         </div>
@@ -374,7 +375,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
             <Activity className="w-5 h-5 opacity-50" />
           </div>
           <div className={`text-3xl font-bold font-mono tracking-tight mb-1 ${stats.netPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.netPnL > 0 ? '+' : ''}${stats.netPnL.toFixed(2)}
+            {formatCurrencyWithSign(stats.netPnL, account.currency)}
           </div>
           <div className="text-xs text-gray-500">Total accumulated profit/loss</div>
         </div>
@@ -416,12 +417,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               <LineChart data={stats.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#232936" vertical={false} />
                 <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(value: number) => `$${value}`} tickLine={false} axisLine={false} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(value: number) => `${getCurrencySymbol(account.currency)}${value}`} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px' }}
                   itemStyle={{ color: '#e5e7eb' }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Balance']}
+                  formatter={(value: any) => [`${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)}`, 'Balance']}
                 />
                 <Line
                   type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3}
@@ -447,7 +448,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                 </div>
                 <span className="text-sm text-gray-300">Avg Profit</span>
               </div>
-              <span className="font-mono text-emerald-400">${stats.avgWin.toFixed(2)}</span>
+              <span className="font-mono text-emerald-400">{formatCurrencyValue(stats.avgWin, account.currency)}</span>
             </div>
 
             <div className="flex justify-between items-center bg-[#151a23] p-3 rounded-lg border border-[#232936]">
@@ -457,7 +458,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                 </div>
                 <span className="text-sm text-gray-300">Avg Loss</span>
               </div>
-              <span className="font-mono text-rose-400">-${stats.avgLoss.toFixed(2)}</span>
+              <span className="font-mono text-rose-400">{formatCurrencyWithSign(-stats.avgLoss, account.currency)}</span>
             </div>
 
             {/* Profit / Loss Pie */}
@@ -553,13 +554,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#232936" vertical={false} />
                 <XAxis dataKey="day" stroke="#4b5563" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val: number) => `$${val}`} tickLine={false} axisLine={false} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val: number) => `${getCurrencySymbol(account.currency)}${val}`} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ fill: '#1f2937', opacity: 0.4 }}
                   contentStyle={{ backgroundColor: '#151a23', borderColor: '#232936', borderRadius: '8px' }}
                   itemStyle={{ color: '#e5e7eb' }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'PnL']}
+                  formatter={(value: any) => [`${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)}`, 'PnL']}
                 />
                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                   {stats.dayPerformance.map((entry, index) => (
@@ -572,7 +573,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
         )}
 
         {/* Calendar view */}
-        {dayView === 'calendar' && <PnLCalendar trades={trades} dailyNotes={dailyNotes} accountId={account.id} />}
+        {dayView === 'calendar' && <PnLCalendar trades={trades} dailyNotes={dailyNotes} accountId={account.id} currency={account.currency} />}
       </div>
     </div>
   );

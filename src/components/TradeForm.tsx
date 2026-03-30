@@ -4,14 +4,16 @@ import { calculatePips, calculatePnL, calculateRRRatio } from '../utils/calculat
 import { v4 as uuidv4 } from 'uuid';
 import { Target, Activity, DollarSign, ListOrdered, Calendar, ArrowRightLeft, Calculator } from 'lucide-react';
 
+import { formatCurrencyWithSign } from '../utils/currency';
 import { db } from '../db';
 
 interface TradeFormProps {
   accountId: string;
+  currency: string;
   onTradeAdded?: () => void;
 }
 
-export const TradeForm: React.FC<TradeFormProps> = ({ accountId, onTradeAdded }) => {
+export const TradeForm: React.FC<TradeFormProps> = ({ accountId, currency, onTradeAdded }) => {
   const [dateTime, setDateTime] = useState(new Date().toISOString().slice(0, 16));
   const [pair, setPair] = useState('XAU/USD');
   const [type, setType] = useState<TradeType>('Buy');
@@ -197,7 +199,7 @@ export const TradeForm: React.FC<TradeFormProps> = ({ accountId, onTradeAdded })
             <div>
               <div className="text-gray-500 text-sm mb-1">Est. PnL</div>
               <div className={`text-xl font-mono font-medium ${pnl > 0 ? 'text-emerald-400' : pnl < 0 ? 'text-rose-400' : 'text-gray-300'}`}>
-                {pnl > 0 ? '+' : ''}${pnl.toFixed(2)}
+                {formatCurrencyWithSign(pnl, currency)}
               </div>
             </div>
             <div>

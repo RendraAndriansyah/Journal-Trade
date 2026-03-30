@@ -5,7 +5,9 @@ import { format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X } from 'lucide-react';
 import type { Trade } from '../types';
 
-interface Props { accountId: string; }
+import { formatCurrencyWithSign } from '../utils/currency';
+
+interface Props { accountId: string; currency: string; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function extractOriginalLots(note: string): number | null {
@@ -138,7 +140,7 @@ function buildLayerRows(tradeRows: TradeRow[]): LayerRow[] {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export const TradeHistory = ({ accountId }: Props) => {
+export const TradeHistory = ({ accountId, currency }: Props) => {
   const [dateFilter, setDateFilter] = useState<'today' | 'lastDay' | 'all' | 'custom'>('lastDay');
   const [startDate, setStartDate]   = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate,   setEndDate]     = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -224,7 +226,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                       <td className="px-3 py-2.5 font-mono text-right text-gray-400">{t.entryPrice.toFixed(2)}</td>
                       <td className="px-3 py-2.5 font-mono text-right text-gray-400">{t.closingPrice.toFixed(2)}</td>
                       <td className={`px-3 py-2.5 font-mono text-right ${t.pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{t.pips >= 0 ? '+' : ''}{t.pips}</td>
-                      <td className={`px-3 py-2.5 font-mono font-bold text-right ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{t.pnl >= 0 ? '+' : '-'}${Math.abs(t.pnl).toFixed(2)}</td>
+                      <td className={`px-3 py-2.5 font-mono font-bold text-right ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrencyWithSign(t.pnl, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -234,7 +236,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                     <td className="px-3 py-2.5 font-mono text-right text-gray-300 font-semibold">{parseFloat(partialDialog.reduce((s,t)=>s+t.lotSize,0).toFixed(2))}</td>
                     <td colSpan={3}></td>
                     <td className={`px-3 py-2.5 font-mono font-bold text-right rounded-br-lg ${partialDialog.reduce((s,t)=>s+t.pnl,0)>=0?'text-emerald-400':'text-rose-400'}`}>
-                      {(()=>{const tot=partialDialog.reduce((s,t)=>s+t.pnl,0);return `${tot>=0?'+':'-'}$${Math.abs(tot).toFixed(2)}`;})()}
+                      {(()=>{const tot=partialDialog.reduce((s,t)=>s+t.pnl,0);return formatCurrencyWithSign(tot, currency);})()}
                     </td>
                   </tr>
                 </tfoot>
@@ -294,7 +296,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                         {row.isPartialGroup ? <span className="text-gray-500 italic text-xs">avg {row.avgClosePrice.toFixed(2)}</span> : row.avgClosePrice.toFixed(2)}
                       </td>
                       <td className={`px-3 py-2.5 font-mono text-right ${row.totalPips>=0?'text-emerald-400':'text-rose-400'}`}>{row.totalPips>=0?'+':''}{row.totalPips}</td>
-                      <td className={`px-3 py-2.5 font-mono font-bold text-right ${row.totalPnl>=0?'text-emerald-400':'text-rose-400'}`}>{row.totalPnl>=0?'+':'-'}${Math.abs(row.totalPnl).toFixed(2)}</td>
+                      <td className={`px-3 py-2.5 font-mono font-bold text-right ${row.totalPnl>=0?'text-emerald-400':'text-rose-400'}`}>{formatCurrencyWithSign(row.totalPnl, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -304,7 +306,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                     <td className="px-3 py-2.5 font-mono text-right text-gray-300 font-semibold">{parseFloat(layerDialog.reduce((s,r)=>s+r.totalLots,0).toFixed(2))}</td>
                     <td colSpan={3}></td>
                     <td className={`px-3 py-2.5 font-mono font-bold text-right rounded-br-lg ${layerDialog.reduce((s,r)=>s+r.totalPnl,0)>=0?'text-emerald-400':'text-rose-400'}`}>
-                      {(()=>{const tot=layerDialog.reduce((s,r)=>s+r.totalPnl,0);return `${tot>=0?'+':'-'}$${Math.abs(tot).toFixed(2)}`;})()}
+                      {(()=>{const tot=layerDialog.reduce((s,r)=>s+r.totalPnl,0);return formatCurrencyWithSign(tot, currency);})()}
                     </td>
                   </tr>
                 </tfoot>
@@ -392,7 +394,7 @@ export const TradeHistory = ({ accountId }: Props) => {
                     {lr.totalPips>=0?'+':''}{lr.totalPips}
                   </td>
                   <td className={`px-4 py-3 text-sm font-mono font-bold text-right ${lr.totalPnl>=0?'text-emerald-400':'text-rose-400'}`}>
-                    {lr.totalPnl>=0?'+':'-'}${Math.abs(lr.totalPnl).toFixed(2)}
+                    {formatCurrencyWithSign(lr.totalPnl, currency)}
                   </td>
 
                   {/* Detail column — priority: Layer > Partial > none */}

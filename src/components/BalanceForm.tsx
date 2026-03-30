@@ -6,11 +6,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO } from 'date-fns';
 import type { BalanceLog } from '../types';
 
+import { formatCurrencyWithSign } from '../utils/currency';
+
 interface Props {
   accountId: string;
+  currency: string;
 }
 
-export const BalanceForm = ({ accountId }: Props) => {
+export const BalanceForm = ({ accountId, currency }: Props) => {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'Deposit' | 'Withdrawal' | 'Compensation'>('Deposit');
   const [note, setNote] = useState('');
@@ -209,7 +212,7 @@ export const BalanceForm = ({ accountId }: Props) => {
                      : log.type === 'Compensation' ? 'text-amber-400'
                      : 'text-emerald-400'
                    }`}>
-                     {log.type === 'Withdrawal' ? '-' : '+'}${log.amount.toFixed(2)}
+                     {formatCurrencyWithSign(log.type === 'Withdrawal' ? -log.amount : log.amount, currency)}
                    </div>
                    <div className="flex items-center gap-2">
                      <button title="Edit" onClick={() => handleEdit(log)} className="p-1.5 text-gray-500 hover:text-blue-400 bg-[#151a23] rounded-lg border border-[#232936] transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5"/></button>

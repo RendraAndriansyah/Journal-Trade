@@ -319,14 +319,14 @@ function App() {
 
                 {/* Content */}
                 {inputTab === 'trade' ? (
-                  <TradeForm accountId={activeAccount.id} onTradeAdded={() => setActiveTab('dashboard')} />
+                  <TradeForm accountId={activeAccount.id} currency={activeAccount.currency} onTradeAdded={() => setActiveTab('dashboard')} />
                 ) : (
-                  <BalanceForm accountId={activeAccount.id} />
+                  <BalanceForm accountId={activeAccount.id} currency={activeAccount.currency} />
                 )}
               </div>
             ) : activeTab === 'history' ? (
               <div className="max-w-5xl mx-auto">
-                <TradeHistory accountId={activeAccount.id} />
+                <TradeHistory accountId={activeAccount.id} currency={activeAccount.currency} />
               </div>
             ) : activeTab === 'import' ? (
               <div className="max-w-3xl mx-auto">
