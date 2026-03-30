@@ -470,19 +470,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
 
             {/* Profit / Loss Pie */}
             <div className="bg-[#151a23] rounded-lg border border-[#232936] p-3">
-              <p className="text-xs text-gray-400 font-medium uppercase mb-3 text-center">Profit / Loss</p>
+              <p className="text-xs text-gray-400 font-medium uppercase mb-3 text-center pl-12">Profit / Loss</p>
               <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mb-1" />
-                  <span className="text-xs font-semibold text-emerald-400">{stats.winCount}</span>
-                  <span className="text-[10px] text-emerald-600/80">Profit</span>
+                
+                {/* Profit */}
+                <div className='flex flex-col gap-3'>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[8px] border-b-emerald-500" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-emerald-400 leading-none">{stats.winCount}</span>
+                      <span className="text-[10px] text-emerald-600/80 mt-1 leading-none">Profit</span>
+                    </div>
+                  </div>
+
+                  {/* BE */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-1 bg-slate-400 rounded-sm" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-slate-300 leading-none">{stats.beCount}</span>
+                      <span className="text-[10px] text-slate-500 mt-1 leading-none">BE</span>
+                    </div>
+                  </div>
+
+                  {/* Loss */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[8px] border-t-rose-500" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-rose-400 leading-none">{stats.lossCount}</span>
+                      <span className="text-[10px] text-rose-600/80 mt-1 leading-none">Loss</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-400 mb-1" />
-                  <span className="text-xs font-semibold text-slate-300">{stats.beCount}</span>
-                  <span className="text-[10px] text-slate-500">BE</span>
-                </div>
-                <div className="flex-1">
+                {/* Pie Chart */}
+                <div className="flex-1 min-w-[80px]">
                   <ResponsiveContainer width="100%" height={100}>
                     <PieChart>
                       <Pie
@@ -513,13 +533,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mb-1" />
-                  <span className="text-xs font-semibold text-rose-400">{stats.lossCount}</span>
-                  <span className="text-[10px] text-rose-600/80">Loss</span>
-                </div>
+
+               
+
               </div>
-              <p className="text-[10px] text-center text-yellow-600 mt-1">
+              <p className="text-[10px] text-center text-yellow-600 mt-1 pl-12">
                 RR Estimate: 1:{stats.avgLoss ? (stats.avgWin / stats.avgLoss).toFixed(2) : '–'}
               </p>
             </div>
