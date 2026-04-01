@@ -162,7 +162,7 @@ const PnLCalendar = ({ trades, dailyNotes, accountId, currency }: { trades: Trad
                 <div className="flex flex-col justify-end h-full mt-1">
                   {hasPnl ? (
                     <div>
-                      <span className={`block text-[11px] font-bold font-mono leading-tight
+                      <span className={`block text-sm font-bold font-mono leading-tight
                         ${isProfit ? 'text-emerald-400' : 'text-rose-400'}
                       `}>
                         {formatCurrencyWithSign(pnl, currency)}

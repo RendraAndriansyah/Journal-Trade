@@ -141,7 +141,7 @@ function buildLayerRows(tradeRows: TradeRow[]): LayerRow[] {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const TradeHistory = ({ accountId, currency }: Props) => {
-  const [dateFilter, setDateFilter] = useState<'today' | 'lastDay' | 'all' | 'custom'>('lastDay');
+  const [dateFilter, setDateFilter] = useState<'today' | 'lastDay' | 'all' | 'custom' | 'selectedDate'>('lastDay');
   const [startDate, setStartDate]   = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate,   setEndDate]     = useState(format(new Date(), 'yyyy-MM-dd'));
   // Dialog state: null = closed | Trade[] = partial breakdown | TradeRow[] = layer breakdown
@@ -165,6 +165,9 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
   } else if (dateFilter === 'lastDay') {
     if (lastTradingDate)
       filteredTrades = filteredTrades.filter(t => startOfDay(new Date(t.dateTime)).getTime() === lastTradingDate.getTime());
+  } else if (dateFilter === 'selectedDate') {
+    const day = startOfDay(new Date(`${startDate}T00:00:00`)).getTime();
+    filteredTrades = filteredTrades.filter(t => startOfDay(new Date(t.dateTime)).getTime() === day);
   } else if (dateFilter === 'custom') {
     const start = new Date(`${startDate}T00:00:00`).getTime();
     const end   = new Date(`${endDate}T23:59:59`).getTime();
@@ -353,9 +356,15 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
         </div>
         <select value={dateFilter} onChange={e => setDateFilter(e.target.value as any)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-3 py-2 text-gray-300 outline-none w-full sm:w-auto">
           <option value="lastDay">Last Trading Day</option>
+          <option value="selectedDate">Selected Date</option>
           <option value="all">All Days</option>
           <option value="custom">Custom Period</option>
         </select>
+        {dateFilter === 'selectedDate' && (
+          <div className="flex items-center gap-2 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" />
+          </div>
+        )}
         {dateFilter === 'custom' && (
           <div className="flex items-center gap-2 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" />
