@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { format, parseISO, isToday, startOfDay } from 'date-fns';
-import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { format, parseISO, isToday, startOfDay, addDays, subDays } from 'date-fns';
+import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Trade } from '../types';
 
 import { formatCurrencyWithSign } from '../utils/currency';
@@ -361,8 +361,27 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
           <option value="custom">Custom Period</option>
         </select>
         {dateFilter === 'selectedDate' && (
-          <div className="flex items-center gap-2 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none w-full sm:w-auto cursor-pointer" />
+          <div className="flex items-center gap-1.5 w-full sm:w-auto basis-full sm:basis-auto order-last sm:order-none">
+            <button
+              onClick={() => setStartDate(format(subDays(new Date(`${startDate}T00:00:00`), 1), 'yyyy-MM-dd'))}
+              className="p-2 rounded-lg bg-[#151a23] border border-[#232936] text-gray-400 hover:text-white hover:bg-[#232936] transition-colors"
+              title="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="bg-[#151a23] border border-[#232936] text-sm rounded-lg px-2 py-2 text-gray-300 outline-none cursor-pointer"
+            />
+            <button
+              onClick={() => setStartDate(format(addDays(new Date(`${startDate}T00:00:00`), 1), 'yyyy-MM-dd'))}
+              className="p-2 rounded-lg bg-[#151a23] border border-[#232936] text-gray-400 hover:text-white hover:bg-[#232936] transition-colors"
+              title="Next day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
         {dateFilter === 'custom' && (
