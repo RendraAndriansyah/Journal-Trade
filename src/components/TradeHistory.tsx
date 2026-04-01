@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
-import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { Trade } from '../types';
 
 import { formatCurrencyWithSign } from '../utils/currency';
@@ -172,6 +172,19 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
   }
 
   const layerRows = useMemo(() => buildLayerRows(buildRows(filteredTrades)), [filteredTrades]);
+
+  // ── Summary stats ─────────────────────────────────────────────────────────
+  const summary = useMemo(() => {
+    const beThreshold = currency === 'IDR' ? 20000 : 20;
+    let wins = 0, bes = 0, losses = 0, totalPnl = 0;
+    for (const lr of layerRows) {
+      totalPnl += lr.totalPnl;
+      if (Math.abs(lr.totalPnl) < beThreshold) bes++;
+      else if (lr.totalPnl > 0) wins++;
+      else losses++;
+    }
+    return { wins, bes, losses, totalPnl, total: layerRows.length };
+  }, [layerRows, currency]);
 
 
   const handleDeleteByDay = async () => {
@@ -351,6 +364,70 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
           </div>
         )}
       </div>
+
+      {/* ── Summary Bar ──────────────────────────────────────────────────── */}
+      {layerRows.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {/* Win */}
+          <div className="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+            <div className="bg-emerald-500/15 p-2 rounded-lg shrink-0">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600/80 leading-none mb-1">Win</p>
+              <p className="text-xl font-bold font-mono text-emerald-400 leading-none">{summary.wins}</p>
+            </div>
+          </div>
+
+          {/* BE */}
+          <div className="flex items-center gap-3 bg-slate-500/5 border border-slate-500/15 rounded-xl px-4 py-3">
+            <div className="bg-slate-500/15 p-2 rounded-lg shrink-0">
+              <Minus className="w-4 h-4 text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500/80 leading-none mb-1">Break Even</p>
+              <p className="text-xl font-bold font-mono text-slate-300 leading-none">{summary.bes}</p>
+            </div>
+          </div>
+
+          {/* Loss */}
+          <div className="flex items-center gap-3 bg-rose-500/5 border border-rose-500/15 rounded-xl px-4 py-3">
+            <div className="bg-rose-500/15 p-2 rounded-lg shrink-0">
+              <TrendingDown className="w-4 h-4 text-rose-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600/80 leading-none mb-1">Loss</p>
+              <p className="text-xl font-bold font-mono text-rose-400 leading-none">{summary.losses}</p>
+            </div>
+          </div>
+
+          {/* P&L */}
+          <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${
+            summary.totalPnl > 0
+              ? 'bg-blue-500/5 border-blue-500/15'
+              : summary.totalPnl < 0
+              ? 'bg-rose-900/10 border-rose-700/20'
+              : 'bg-[#0b0e14] border-[#232936]'
+          }`}>
+            <div className={`p-2 rounded-lg shrink-0 ${
+              summary.totalPnl > 0 ? 'bg-blue-500/15' : summary.totalPnl < 0 ? 'bg-rose-500/15' : 'bg-gray-700/20'
+            }`}>
+              {summary.totalPnl >= 0
+                ? <TrendingUp className={`w-4 h-4 ${summary.totalPnl > 0 ? 'text-blue-400' : 'text-gray-500'}`} />
+                : <TrendingDown className="w-4 h-4 text-rose-400" />
+              }
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500/80 leading-none mb-1">P&amp;L</p>
+              <p className={`text-xl font-bold font-mono leading-none ${
+                summary.totalPnl > 0 ? 'text-blue-400' : summary.totalPnl < 0 ? 'text-rose-400' : 'text-gray-400'
+              }`}>
+                {formatCurrencyWithSign(summary.totalPnl, currency)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       {layerRows.length === 0 ? (
