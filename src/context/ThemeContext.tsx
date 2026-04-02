@@ -18,17 +18,19 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     return saved ?? 'dark';
   });
 
+  // Only persist to localStorage — DOM class is set synchronously in toggleTheme
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
     localStorage.setItem('gj-theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
+  const toggleTheme = () => {
+    setTheme(t => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      // Apply to DOM immediately — don't wait for React's commit + effect cycle
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      return next;
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
