@@ -25,7 +25,12 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [targetTheme, setTargetTheme] = useState<Theme>(theme);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Only persist to localStorage — DOM class is set synchronously in toggleTheme
+  // Apply DOM class on mount from saved theme (restores after refresh)
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, []);
+
+  // Persist to localStorage whenever theme changes
   useEffect(() => {
     localStorage.setItem('gj-theme', theme);
   }, [theme]);
