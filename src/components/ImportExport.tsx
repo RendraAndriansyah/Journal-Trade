@@ -382,20 +382,21 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
   // ── UI ────────────────────────────────────────────────────────────────────
   return (
     <div className="card">
-      <div className="flex items-center space-x-2 mb-6 border-b border-[#232936] pb-4">
+      <div className="flex items-center space-x-2 mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <FileJson className="w-6 h-6 text-indigo-500" />
-        <h2 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
           Import / Export JSON
         </h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Import */}
-        <div className="bg-[#0f121b] border border-[#232936] p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+        <div className="p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3 border"
+             style={{ backgroundColor: 'var(--bg-raised)', borderColor: 'var(--border)' }}>
           <Upload className="w-8 h-8 text-blue-400" />
           <div>
-            <h3 className="font-semibold text-gray-200">Import Log Data</h3>
-            <p className="text-xs text-gray-500 mt-1">Upload a JSON array with action "in" and "out" records.</p>
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Import Log Data</h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Upload a JSON array with action "in" and "out" records.</p>
           </div>
           <input type="file" accept=".json" ref={fileInputRef} onChange={handleImport} className="hidden" />
           <button
@@ -408,11 +409,12 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         </div>
 
         {/* Export */}
-        <div className="bg-[#0f121b] border border-[#232936] p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+        <div className="p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3 border"
+             style={{ backgroundColor: 'var(--bg-raised)', borderColor: 'var(--border)' }}>
           <Download className="w-8 h-8 text-emerald-400" />
           <div>
-            <h3 className="font-semibold text-gray-200">Export Log Data</h3>
-            <p className="text-xs text-gray-500 mt-1">Download current account trades in JSON format.</p>
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Export Log Data</h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Download current account trades in JSON format.</p>
           </div>
           <button
             onClick={handleExport}
@@ -424,11 +426,11 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
       </div>
 
       {/* Raw MT5 log paste */}
-      <div className="mt-8 bg-[#0f121b] border border-[#232936] p-5 rounded-xl">
-        <h3 className="font-semibold text-gray-200 flex items-center gap-2 mb-1">
+      <div className="mt-8 p-5 rounded-xl border" style={{ backgroundColor: 'var(--bg-raised)', borderColor: 'var(--border)' }}>
+        <h3 className="font-semibold flex items-center gap-2 mb-1" style={{ color: 'var(--text-primary)' }}>
           <FileText className="w-5 h-5 text-indigo-400" /> Raw MT5 Log Converter
         </h3>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
           Paste your tab-separated raw MT5 log data below. Trades, Deposits, and SO Compensation rows are all handled automatically.
         </p>
 
@@ -451,7 +453,8 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
             value={rawText}
             onChange={e => setRawText(e.target.value)}
             placeholder={"Paste raw MT5 log data here (tab-separated):\n2026.03.24 07:11:52\t14154137217\tsell\t0.1\tXAUUSDc\t4333.11\t...\t\tin\t0.00\t0.00\t0.00\t0.00"}
-            className="w-full h-52 bg-[#0b0e14] border border-[#232936] rounded-lg p-3 text-xs text-gray-300 font-mono focus:outline-none focus:border-indigo-500 resize-none"
+            className="w-full h-52 rounded-lg p-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none border"
+            style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           />
           <button
             onClick={handleRawImport}

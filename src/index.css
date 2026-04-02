@@ -1,21 +1,118 @@
 @import "tailwindcss";
+
+/* ── Dark theme (default) ────────────────────────────────────────────── */
+:root {
+  --bg-base:      #0b0e14;
+  --bg-surface:   #151a23;
+  --bg-raised:    #0f121b;
+  --bg-overlay:   #1a202c;
+  --border:       #232936;
+  --border-muted: #1c2130;
+  --border-deep:  #2d3547;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted:   #6b7280;
+  --text-faint:   #4b5563;
+  --hover-bg:     #232936;
+  --hover-row:    #151a23;
+  --hover-row-2:  #1e2535;
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────── */
+.dark {
+  --bg-base:      #0b0e14;
+  --bg-surface:   #151a23;
+  --bg-raised:    #0f121b;
+  --bg-overlay:   #1a202c;
+  --border:       #232936;
+  --border-muted: #1c2130;
+  --border-deep:  #2d3547;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted:   #6b7280;
+  --text-faint:   #4b5563;
+  --hover-bg:     #232936;
+  --hover-row:    #151a23;
+  --hover-row-2:  #1e2535;
+}
+
+html:not(.dark) {
+  --bg-base:      #f0f2f7;
+  --bg-surface:   #ffffff;
+  --bg-raised:    #f8f9fc;
+  --bg-overlay:   #eef0f6;
+  --border:       #d1d5e0;
+  --border-muted: #dde0ea;
+  --border-deep:  #c6cad8;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted:   #6b7280;
+  --text-faint:   #9ca3af;
+  --hover-bg:     #e5e7ef;
+  --hover-row:    #f4f5fa;
+  --hover-row-2:  #ebedf5;
+}
+
+/* ── Base layer ──────────────────────────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-[#0b0e14] text-gray-100 font-sans antialiased;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    @apply font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Smooth transition for theme-sensitive elements */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+  }
+
+  /* Override transition for transforms/opacity so animations aren't slowed */
+  .animate-spin, .animate-in, [class*="transition-"] {
+    transition-duration: unset;
+    transition-property: unset;
   }
 }
 
+/* ── Component layer ─────────────────────────────────────────────────── */
 @layer components {
   .card {
-    @apply bg-[#151a23] border border-[#232936] rounded-xl p-6 shadow-sm;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    @apply rounded-xl p-6 shadow-sm;
   }
+
   .input-field {
-    @apply w-full bg-[#0b0e14] border border-[#232936] rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 transition-all;
+    width: 100%;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    @apply rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all;
   }
+
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+
   .label-text {
-    @apply block text-sm font-medium text-gray-400 mb-1;
+    color: var(--text-secondary);
+    @apply block text-sm font-medium mb-1;
   }
+
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#151a23];
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
   }
+
+  /* Reusable surface variants */
+  .surface-base    { background-color: var(--bg-base); }
+  .surface-raised  { background-color: var(--bg-raised); }
+  .surface-overlay { background-color: var(--bg-overlay); }
+  .border-theme    { border-color: var(--border); }
+  .border-muted    { border-color: var(--border-muted); }
+  .text-theme-primary   { color: var(--text-primary); }
+  .text-theme-secondary { color: var(--text-secondary); }
+  .text-theme-muted     { color: var(--text-muted); }
+  .text-theme-faint     { color: var(--text-faint); }
 }

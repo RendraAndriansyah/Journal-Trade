@@ -27,28 +27,13 @@ export const BalanceForm = ({ accountId, currency }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !accountId || !dateTime) return;
-
     const isoDateTime = new Date(dateTime).toISOString();
-
     if (editingId) {
-      await db.balanceLogs.update(editingId, {
-        dateTime: isoDateTime,
-        type,
-        amount: parseFloat(amount),
-        note
-      });
+      await db.balanceLogs.update(editingId, { dateTime: isoDateTime, type, amount: parseFloat(amount), note });
       setEditingId(null);
     } else {
-      await db.balanceLogs.add({
-        id: uuidv4(),
-        accountId,
-        dateTime: isoDateTime,
-        type,
-        amount: parseFloat(amount),
-        note
-      });
+      await db.balanceLogs.add({ id: uuidv4(), accountId, dateTime: isoDateTime, type, amount: parseFloat(amount), note });
     }
-
     setAmount('');
     setNote('');
     setDateTime(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
@@ -73,18 +58,27 @@ export const BalanceForm = ({ accountId, currency }: Props) => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this balance transaction?')) {
       await db.balanceLogs.delete(id);
-      if (editingId === id) {
-        handleCancelEdit();
-      }
+      if (editingId === id) handleCancelEdit();
     }
   };
+
+  const typeBtn = (t: typeof type, label: string, Icon: React.ElementType, activeClass: string) => (
+    <button
+      type="button"
+      onClick={() => setType(t)}
+      className={`flex-1 py-2 text-sm font-medium transition-all border-l ${type === t ? activeClass : ''}`}
+      style={type !== t ? { backgroundColor: 'var(--bg-base)', color: 'var(--text-muted)', borderColor: 'var(--border)' } : { borderColor: 'var(--border)' }}
+    >
+      <Icon className="w-4 h-4 inline mr-1"/> {label}
+    </button>
+  );
 
   return (
     <div className="space-y-6">
       <div className="card">
-        <div className="flex items-center space-x-2 mb-6 border-b border-[#232936] pb-4">
+        <div className="flex items-center space-x-2 mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <Wallet className="w-6 h-6 text-indigo-500" />
-          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {editingId ? 'Edit Balance Transaction' : 'Log Balance Transaction'}
           </h2>
         </div>
@@ -93,28 +87,14 @@ export const BalanceForm = ({ accountId, currency }: Props) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="label-text flex items-center gap-1.5"><Target className="w-4 h-4"/> Transaction Type</label>
-              <div className="flex rounded-lg overflow-hidden border border-[#232936]">
-                <button
-                  type="button"
-                  onClick={() => setType('Deposit')}
-                  className={`flex-1 py-2 text-sm font-medium transition-all ${type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[#0b0e14] text-gray-500 hover:text-gray-300'}`}
-                >
+              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                <button type="button" onClick={() => setType('Deposit')}
+                        className={`flex-1 py-2 text-sm font-medium transition-all ${type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-400' : ''}`}
+                        style={type !== 'Deposit' ? { backgroundColor: 'var(--bg-base)', color: 'var(--text-muted)' } : undefined}>
                   <ArrowUpCircle className="w-4 h-4 inline mr-1"/> Deposit
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setType('Withdrawal')}
-                  className={`flex-1 py-2 text-sm font-medium transition-all border-l border-[#232936] ${type === 'Withdrawal' ? 'bg-rose-500/10 text-rose-400' : 'bg-[#0b0e14] text-gray-500 hover:text-gray-300'}`}
-                >
-                  <ArrowDownCircle className="w-4 h-4 inline mr-1"/> Withdrawal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType('Compensation')}
-                  className={`flex-1 py-2 text-sm font-medium transition-all border-l border-[#232936] ${type === 'Compensation' ? 'bg-amber-500/10 text-amber-400' : 'bg-[#0b0e14] text-gray-500 hover:text-gray-300'}`}
-                >
-                  <ShieldCheck className="w-4 h-4 inline mr-1"/> Compensation
-                </button>
+                {typeBtn('Withdrawal', 'Withdrawal', ArrowDownCircle, 'bg-rose-500/10 text-rose-400')}
+                {typeBtn('Compensation', 'Compensation', ShieldCheck, 'bg-amber-500/10 text-amber-400')}
               </div>
               {type === 'Compensation' && (
                 <p className="text-[11px] text-amber-500/70 mt-1.5">
@@ -125,55 +105,31 @@ export const BalanceForm = ({ accountId, currency }: Props) => {
 
             <div>
               <label className="label-text flex items-center gap-1.5"><Calendar className="w-4 h-4"/> Date &amp; Time</label>
-              <input 
-                type="datetime-local" 
-                value={dateTime} 
-                onChange={e => setDateTime(e.target.value)}
-                className="input-field"
-                required 
-              />
+              <input type="datetime-local" value={dateTime} onChange={e => setDateTime(e.target.value)} className="input-field" required />
             </div>
             
             <div>
               <label className="label-text flex items-center gap-1.5"><DollarSign className="w-4 h-4"/> Amount</label>
-              <input 
-                type="number" 
-                step="0.01"
-                min="0.01"
-                value={amount} 
-                onChange={e => setAmount(e.target.value)}
-                placeholder="e.g. 500.00"
-                className="input-field"
-                required 
-              />
+              <input type="number" step="0.01" min="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 500.00" className="input-field" required />
             </div>
 
             <div>
               <label className="label-text flex items-center gap-1.5"><ListOrdered className="w-4 h-4"/> Note (Optional)</label>
-              <input 
-                type="text" 
-                value={note} 
-                onChange={e => setNote(e.target.value)}
-                placeholder="e.g. Funding account"
-                className="input-field"
-              />
+              <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Funding account" className="input-field" />
             </div>
           </div>
 
           <div className="flex gap-3 mt-4">
             {editingId && (
-              <button 
-                type="button" 
-                onClick={handleCancelEdit}
-                className="w-1/3 bg-[#232936] hover:bg-[#2c3343] text-gray-300 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
+              <button type="button" onClick={handleCancelEdit}
+                      className="w-1/3 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      style={{ backgroundColor: 'var(--hover-bg)', color: 'var(--text-secondary)' }}
+                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--border)')}
+                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--hover-bg)')}>
                 <X className="w-4 h-4" /> Cancel
               </button>
             )}
-            <button 
-              type="submit" 
-              className={`btn-primary shadow-lg shadow-blue-900/20 py-3 flex-1 cursor-pointer`}
-            >
+            <button type="submit" className="btn-primary shadow-lg shadow-blue-900/20 py-3 flex-1 cursor-pointer">
               {editingId ? 'Update Transaction' : 'Log Transaction'}
             </button>
           </div>
@@ -181,48 +137,61 @@ export const BalanceForm = ({ accountId, currency }: Props) => {
       </div>
 
       <div className="card">
-         <h3 className="text-gray-300 font-semibold mb-4 border-b border-[#232936] pb-3">Recent Transactions</h3>
-         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-           {balanceLogs.length === 0 ? (
-             <div className="text-center text-gray-500 text-sm py-4">No transactions found.</div>
-           ) : (
-             balanceLogs.map((log: BalanceLog) => (
-               <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[#0b0e14] border border-[#232936] rounded-lg gap-3 sm:gap-0">
-                 <div className="flex items-center gap-3">
-                   <div className={`p-2 rounded-full ${
-                     log.type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-500'
-                     : log.type === 'Compensation' ? 'bg-amber-500/10 text-amber-500'
-                     : 'bg-rose-500/10 text-rose-500'
-                   }`}>
-                     {log.type === 'Deposit'
-                       ? <ArrowUpCircle className="w-4 h-4"/>
-                       : log.type === 'Compensation'
-                         ? <ShieldCheck className="w-4 h-4"/>
-                         : <ArrowDownCircle className="w-4 h-4"/>}
-                   </div>
-                   <div>
-                     <div className="text-sm font-medium text-gray-200">{log.type}</div>
-                     <div className="text-xs text-gray-500">{format(parseISO(log.dateTime), 'MMM dd, yyyy HH:mm')} &middot; {log.note || 'No description'}</div>
-                   </div>
-                 </div>
-                 
-                 <div className="flex items-center justify-between sm:justify-end gap-5">
-                   <div className={`font-mono font-bold ${
-                     log.type === 'Withdrawal' ? 'text-rose-400'
-                     : log.type === 'Compensation' ? 'text-amber-400'
-                     : 'text-emerald-400'
-                   }`}>
-                     {formatCurrencyWithSign(log.type === 'Withdrawal' ? -log.amount : log.amount, currency)}
-                   </div>
-                   <div className="flex items-center gap-2">
-                     <button title="Edit" onClick={() => handleEdit(log)} className="p-1.5 text-gray-500 hover:text-blue-400 bg-[#151a23] rounded-lg border border-[#232936] transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5"/></button>
-                     <button title="Delete" onClick={() => handleDelete(log.id)} className="p-1.5 text-gray-500 hover:text-rose-400 bg-[#151a23] rounded-lg border border-[#232936] transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5"/></button>
-                   </div>
-                 </div>
-               </div>
-             ))
-           )}
-         </div>
+        <h3 className="font-semibold mb-4 pb-3" style={{ color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>Recent Transactions</h3>
+        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+          {balanceLogs.length === 0 ? (
+            <div className="text-center text-sm py-4" style={{ color: 'var(--text-muted)' }}>No transactions found.</div>
+          ) : (
+            balanceLogs.map((log: BalanceLog) => (
+              <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg gap-3 sm:gap-0 border"
+                   style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${
+                    log.type === 'Deposit' ? 'bg-emerald-500/10 text-emerald-500'
+                    : log.type === 'Compensation' ? 'bg-amber-500/10 text-amber-500'
+                    : 'bg-rose-500/10 text-rose-500'
+                  }`}>
+                    {log.type === 'Deposit' ? <ArrowUpCircle className="w-4 h-4"/>
+                      : log.type === 'Compensation' ? <ShieldCheck className="w-4 h-4"/>
+                      : <ArrowDownCircle className="w-4 h-4"/>}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{log.type}</div>
+                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {format(parseISO(log.dateTime), 'MMM dd, yyyy HH:mm')} &middot; {log.note || 'No description'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between sm:justify-end gap-5">
+                  <div className={`font-mono font-bold ${
+                    log.type === 'Withdrawal' ? 'text-rose-400'
+                    : log.type === 'Compensation' ? 'text-amber-400'
+                    : 'text-emerald-400'
+                  }`}>
+                    {formatCurrencyWithSign(log.type === 'Withdrawal' ? -log.amount : log.amount, currency)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button title="Edit" onClick={() => handleEdit(log)}
+                            className="p-1.5 rounded-lg border transition-colors cursor-pointer"
+                            style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#60a5fa'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                      <Edit3 className="w-3.5 h-3.5"/>
+                    </button>
+                    <button title="Delete" onClick={() => handleDelete(log.id)}
+                            className="p-1.5 rounded-lg border transition-colors cursor-pointer"
+                            style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#fb7185'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                      <Trash2 className="w-3.5 h-3.5"/>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
