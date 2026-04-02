@@ -10,9 +10,10 @@ import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table, B
 import { v4 as uuidv4 } from 'uuid';
 import { calculatePips } from './utils/calculations';
 import { useTheme } from './context/ThemeContext';
+import { ThemeTransitionOverlay } from './components/ThemeTransitionOverlay';
 
 function App() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, targetTheme, isTransitioning, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'manual' | 'history' | 'analytics' | 'import'>('dashboard');
   const [inputTab, setInputTab] = useState<'trade' | 'balance'>('trade');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -103,7 +104,10 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row font-sans pb-16 md:pb-0"
          style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
-      
+
+      {/* Theme transition overlay */}
+      <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} />
+
       {/* Account Creation Modal */}
       {showAccountModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
