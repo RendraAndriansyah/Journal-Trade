@@ -299,8 +299,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       else if (pos.totalPnl < 0) { totalLossSize += Math.abs(pos.totalPnl); }
     }
 
-    // Net P&L = pure trading result minus any broker compensation received
-    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0) - compensationTotal;
+    // Net P&L = trading result + broker compensation received
+    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0) + compensationTotal;
     const lossCount = positions.length - winCount - beCount;
     const totalDecisiveTrades = winCount + lossCount;
     const winRate = totalDecisiveTrades > 0 ? (winCount / totalDecisiveTrades) * 100 : 0;
