@@ -254,9 +254,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     const pnlByDateMap: Record<string, number> = {};
     let currentBalance = account.initialBalance, peakBalance = account.initialBalance, maxDrawdown = 0;
 
+    // Split balance logs: Compensation is tracked separately so it can reduce netPnL
+    const compensationTotal = balanceLogs
+      .filter(b => b.type === 'Compensation')
+      .reduce((sum, b) => sum + b.amount, 0);
+
     const timeline = [
       ...trades.map(t => ({ date: t.dateTime, pnl: t.pnl, type: 'trade' as const, obj: t })),
-      ...balanceLogs.map(b => ({ date: b.dateTime, amount: b.type === 'Withdrawal' ? -b.amount : b.amount, type: 'balance' as const, obj: b }))
+      ...balanceLogs.map(b => ({
+        date: b.dateTime,
+        // Compensation = positive credit to balance; Withdrawal = negative
+        amount: b.type === 'Withdrawal' ? -b.amount : b.amount,
+        type: 'balance' as const,
+        obj: b
+      }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const chartData: { date: string; balance: number; pnl: number }[] = [];
@@ -288,7 +299,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
       else if (pos.totalPnl < 0) { totalLossSize += Math.abs(pos.totalPnl); }
     }
 
-    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0);
+    // Net P&L = pure trading result minus any broker compensation received
+    netPnL = positions.reduce((s, p) => s + p.totalPnl, 0) - compensationTotal;
     const lossCount = positions.length - winCount - beCount;
     const totalDecisiveTrades = winCount + lossCount;
     const winRate = totalDecisiveTrades > 0 ? (winCount / totalDecisiveTrades) * 100 : 0;
