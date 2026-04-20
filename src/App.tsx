@@ -5,8 +5,9 @@ const TradeForm    = lazy(() => import('./components/TradeForm').then(m => ({ de
 const BalanceForm  = lazy(() => import('./components/BalanceForm').then(m => ({ default: m.BalanceForm })));
 const ImportExport = lazy(() => import('./components/ImportExport').then(m => ({ default: m.ImportExport })));
 const TradeHistory = lazy(() => import('./components/TradeHistory').then(m => ({ default: m.TradeHistory })));
+const NewsCheatsheet = lazy(() => import('./components/NewsCheatsheet').then(m => ({ default: m.NewsCheatsheet })));
 import { db } from './db';
-import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table, BarChart2, Lock, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Wallet, Coins, FileJson, Table, BarChart2, Lock, Sun, Moon, Newspaper } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { calculatePips } from './utils/calculations';
 import { useTheme } from './context/ThemeContext';
@@ -14,7 +15,7 @@ import { ThemeTransitionOverlay } from './components/ThemeTransitionOverlay';
 
 function App() {
   const { theme, targetTheme, isTransitioning, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'manual' | 'history' | 'analytics' | 'import'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'manual' | 'history' | 'news' | 'analytics' | 'import'>('dashboard');
   const [inputTab, setInputTab] = useState<'trade' | 'balance'>('trade');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -248,6 +249,7 @@ function App() {
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'manual',    label: 'Input',     icon: PlusCircle },
             { id: 'history',   label: 'History',   icon: Table },
+            { id: 'news',      label: 'Cheat Sheet', icon: Newspaper },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -304,6 +306,7 @@ function App() {
                 {activeTab === 'dashboard' ? 'Analytics Dashboard'
                   : activeTab === 'manual' ? 'Input'
                   : activeTab === 'history' ? 'Trade Data Log'
+                  : activeTab === 'news' ? 'Fundamental News cheat sheet'
                   : activeTab === 'analytics' ? 'Analytics'
                   : 'Sync Settings'}
               </h1>
@@ -384,6 +387,10 @@ function App() {
                 ) : (
                   <BalanceForm accountId={activeAccount.id} currency={activeAccount.currency} />
                 )}
+              </div>
+            ) : activeTab === 'news' ? (
+              <div className="max-w-4xl mx-auto">
+                <NewsCheatsheet />
               </div>
             ) : activeTab === 'history' ? (
               <div className="max-w-5xl mx-auto">
