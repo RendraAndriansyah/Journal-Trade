@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowDownRight, ArrowUpRight, Newspaper, Activity } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, Newspaper } from 'lucide-react';
 
 const newsData = [
   {

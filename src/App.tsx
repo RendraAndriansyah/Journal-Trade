@@ -163,7 +163,7 @@ function App() {
            style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 text-blue-500 font-bold text-lg">
           <Coins className="w-6 h-6" />
-          <span>GoldJournal</span>
+          <span>Journal Marga Gold</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Theme toggle mobile */}
@@ -206,7 +206,7 @@ function App() {
             <div className="bg-blue-500/10 p-2 rounded-lg">
               <Coins className="w-6 h-6" />
             </div>
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">GoldJournal</span>
+            <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Journal Marga Gold</span>
           </div>
           {/* Theme toggle desktop */}
           <button
@@ -341,7 +341,7 @@ function App() {
                 <div className="bg-blue-600/10 p-4 rounded-full mb-4">
                   <Wallet className="w-8 h-8 text-blue-500" />
                 </div>
-                <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome to GoldJournal</h2>
+                <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome to Journal Marga Gold</h2>
                 <p className="text-sm mb-6 max-w-md" style={{ color: 'var(--text-muted)' }}>
                   Your database is completely empty. Add your first trading account to begin logging trades or importing MT5 data!
                 </p>
