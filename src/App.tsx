@@ -296,7 +296,7 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-x-hidden overflow-y-auto w-full">
-        <div className="p-4 md:p-8 max-w-6xl mx-auto">
+        <div className={`p-4 md:p-8 mx-auto transition-all duration-300 ${activeTab === 'news' ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
           
           <header className="flex justify-between items-center mb-6 md:mb-8 pb-4 md:pb-5 text-left"
                   style={{ borderBottom: '1px solid var(--border)' }}>
@@ -389,7 +389,7 @@ function App() {
                 )}
               </div>
             ) : activeTab === 'news' ? (
-              <div className="max-w-4xl mx-auto">
+              <div className="w-full mx-auto">
                 <NewsCheatsheet />
               </div>
             ) : activeTab === 'history' ? (
