@@ -103,7 +103,7 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row font-sans pb-16 md:pb-0"
+    <div className="h-screen overflow-hidden flex flex-col md:flex-row font-sans pb-16 md:pb-0"
          style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
 
       {/* Theme transition overlay */}
@@ -197,8 +197,8 @@ function App() {
       </div>
 
       {/* Sidebar / Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 md:relative md:block md:w-64 flex-shrink-0 z-30 p-2 md:p-5 flex md:flex-col justify-around md:justify-start"
-           style={{ backgroundColor: 'var(--bg-surface)', borderTop: '1px solid var(--border)' }}
+      <nav className="fixed bottom-0 left-0 right-0 md:relative md:block md:w-64 md:h-screen md:overflow-y-auto hide-scrollbar flex-shrink-0 z-30 p-2 md:p-5 flex md:flex-col justify-around md:justify-start"
+           style={{ backgroundColor: 'var(--bg-surface)', borderRight: '1px solid var(--border)', borderTop: 'none' }}
       >
         {/* Desktop header */}
         <div className="hidden md:flex items-center justify-between mb-10 pb-5" style={{ borderBottom: '1px solid var(--border)' }}>
