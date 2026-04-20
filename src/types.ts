@@ -38,7 +38,6 @@ export interface DailyNote {
   id: string;
   accountId: string;
   date: string; // yyyy-MM-dd
-  type?: 'daily' | 'important';
   content: string;
   createdAt: string;
   updatedAt: string;
