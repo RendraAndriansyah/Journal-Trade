@@ -153,7 +153,13 @@ export const NewsCheatsheet = () => {
                   <div className="font-bold text-[14px] mb-1" style={{ color: 'var(--text-primary)' }}>{news.name}</div>
                   <div className="flex items-center gap-1.5 mt-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>Heat:</span>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${news.volatilityLevel === 'Extreme' ? 'bg-rose-500/10 text-rose-500' : news.volatilityLevel === 'High' ? 'bg-orange-500/10 text-orange-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                    <div className="flex gap-0.5 mt-[2px]">
+                      <div className={`w-2.5 h-1.5 rounded-sm ${['Low', 'Medium', 'High', 'Extreme'].includes(news.volatilityLevel) ? 'bg-emerald-500' : 'opacity-20 bg-gray-500'}`}></div>
+                      <div className={`w-2.5 h-1.5 rounded-sm ${['Medium', 'High', 'Extreme'].includes(news.volatilityLevel) ? 'bg-amber-500' : 'opacity-20 bg-gray-500'}`}></div>
+                      <div className={`w-2.5 h-1.5 rounded-sm ${['High', 'Extreme'].includes(news.volatilityLevel) ? 'bg-orange-500' : 'opacity-20 bg-gray-500'}`}></div>
+                      <div className={`w-2.5 h-1.5 rounded-sm ${['Extreme'].includes(news.volatilityLevel) ? 'bg-rose-500' : 'opacity-20 bg-gray-500'}`}></div>
+                    </div>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider ml-1 ${news.volatilityLevel === 'Extreme' ? 'text-rose-500' : news.volatilityLevel === 'High' ? 'text-orange-500' : news.volatilityLevel === 'Medium' ? 'text-amber-500' : 'text-emerald-500'}`}>
                       {news.volatilityLevel}
                     </span>
                   </div>
