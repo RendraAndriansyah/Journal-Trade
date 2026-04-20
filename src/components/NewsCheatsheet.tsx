@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Newspaper, TrendingUp, TrendingDown, Info, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronUp, Info, Newspaper } from 'lucide-react';
+import { useState } from 'react';
 
 const newsData = [
   {
