@@ -22,7 +22,7 @@ interface DashboardProps {
 }
 
 // ─── P&L Calendar ───────────────────────────────────────────────────────────
-const PnLCalendar = ({ trades, dailyNotes, accountId, currency }: { trades: Trade[]; dailyNotes: DailyNote[]; accountId: string; currency: string }) => {
+const PnLCalendar = ({ trades, dailyNotes, accountId, currency, initialBalance, startOfDayBalanceMap }: { trades: Trade[]; dailyNotes: DailyNote[]; accountId: string; currency: string; initialBalance: number; startOfDayBalanceMap: Record<string, number> }) => {
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -160,6 +160,9 @@ const PnLCalendar = ({ trades, dailyNotes, accountId, currency }: { trades: Trad
                       <span className={`block text-sm font-bold font-mono leading-tight ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {formatCurrencyWithSign(pnl, currency)}
                       </span>
+                      <span className={`block text-[10px] font-mono leading-tight mt-0.5 ${isProfit ? 'text-emerald-500/80' : isLoss ? 'text-rose-500/80' : 'text-slate-500/80'}`}>
+                        {isProfit ? '+' : ''}{((pnl / (startOfDayBalanceMap[key] || initialBalance || 1)) * 100).toFixed(2)}%
+                      </span>
                       <div className={`mt-1 h-1 rounded-full w-full ${isProfit ? 'bg-emerald-500/40' : 'bg-rose-500/40'}`} />
                     </div>
                   ) : (
@@ -253,6 +256,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     let winCount = 0, beCount = 0, netPnL = 0, totalWinSize = 0, totalLossSize = 0;
     const pnlByDateMap: Record<string, number> = {};
     let currentBalance = account.initialBalance, peakBalance = account.initialBalance, maxDrawdown = 0;
+    const startOfDayBalanceMap: Record<string, number> = {};
 
     // Split balance logs: Compensation is tracked separately so it can reduce netPnL
     const compensationTotal = balanceLogs
@@ -274,6 +278,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     if (timeline.length === 0) chartData.push({ date: format(new Date(), 'MMM dd HH:mm'), balance: currentBalance, pnl: 0 });
 
     timeline.forEach(event => {
+      const dateKey = format(parseISO(event.date), 'yyyy-MM-dd');
+      if (!(dateKey in startOfDayBalanceMap)) {
+        startOfDayBalanceMap[dateKey] = currentBalance;
+      }
       let currentPnl = 0;
       if (event.type === 'trade') {
         const pnl = event.pnl;
@@ -308,10 +316,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
     const avgLoss = lossCount > 0 ? totalLossSize / lossCount : 0;
     const dayPerformance = Object.keys(pnlByDateMap).sort().map(key => ({
       day: format(parseISO(key), 'MMM dd'),
-      pnl: parseFloat(pnlByDateMap[key].toFixed(2))
+      pnl: parseFloat(pnlByDateMap[key].toFixed(2)),
+      percentage: parseFloat(((pnlByDateMap[key] / (startOfDayBalanceMap[key] || account.initialBalance || 1)) * 100).toFixed(2))
     }));
 
-    return { netPnL, winRate, totalTrades: positions.length, winCount, beCount, lossCount, currentBalance, avgWin, avgLoss, maxDrawdown, chartData, dayPerformance };
+    return { netPnL, winRate, totalTrades: positions.length, winCount, beCount, lossCount, currentBalance, avgWin, avgLoss, maxDrawdown, chartData, dayPerformance, startOfDayBalanceMap };
   }, [trades, account, balanceLogs]);
 
   // Tooltip bg adapts via inline style (CSS vars don't work in recharts contentStyle directly, so we use a fixed dark style)
@@ -539,7 +548,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
                   contentStyle={tooltipStyle}
                   itemStyle={tooltipItemStyle}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any) => [`${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)}`, 'PnL']}
+                  formatter={(value: any, name: any, props: any) => {
+                    const strVal = `${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)} (${props.payload?.percentage > 0 ? '+' : ''}${props.payload?.percentage}%)`;
+                    return [strVal, 'PnL'];
+                  }}
                 />
                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                   {stats.dayPerformance.map((entry, index) => (
@@ -551,7 +563,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
           </div>
         )}
 
-        {dayView === 'calendar' && <PnLCalendar trades={trades} dailyNotes={dailyNotes} accountId={account.id} currency={account.currency} />}
+        {dayView === 'calendar' && <PnLCalendar trades={trades} dailyNotes={dailyNotes} accountId={account.id} currency={account.currency} initialBalance={account.initialBalance} startOfDayBalanceMap={stats.startOfDayBalanceMap} />}
       </div>
     </div>
   );
