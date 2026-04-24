@@ -4,16 +4,25 @@ export function getCurrencySymbol(currency: string): string {
   return '$';
 }
 
+function formatNumber(amount: number): string {
+  const parts = amount.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // Optional: remove .00 if it's an integer and currency is IDR? 
+  // Let's keep it to 2 decimal places to be consistent with previous .toFixed(2)
+  return parts.join('.');
+}
+
 export function formatCurrencyValue(amount: number, currency: string): string {
   const sym = getCurrencySymbol(currency);
-  const formatted = amount.toFixed(2);
-  return `${sym}${formatted}`;
+  const space = sym === 'Rp' ? ' ' : '';
+  const formatted = formatNumber(amount);
+  return `${sym}${space}${formatted}`;
 }
 
 export function formatCurrencyWithSign(amount: number, currency: string): string {
   const sym = getCurrencySymbol(currency);
   const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
-  const formatted = Math.abs(amount).toFixed(2);
-  // Using IDR might not need decimal if they are large, but for now we keep .toFixed(2)
-  return `${sign}${sym}${formatted}`;
+  const space = sym === 'Rp' ? ' ' : '';
+  const formatted = formatNumber(Math.abs(amount));
+  return `${sign}${sym}${space}${formatted}`;
 }
