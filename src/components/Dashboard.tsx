@@ -12,7 +12,7 @@ import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
 import type { DailyNote } from '../types';
 import { StickyNote, X, Save, MessageSquare, PlusCircle } from 'lucide-react';
-import { formatCurrencyValue, formatCurrencyWithSign, getCurrencySymbol } from '../utils/currency';
+import { formatCurrencyValue, formatCurrencyWithSign } from '../utils/currency';
 
 interface DashboardProps {
   trades: Trade[];
@@ -397,12 +397,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               <LineChart data={stats.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--text-faint)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-faint)" fontSize={10} tickFormatter={(value: number) => `${getCurrencySymbol(account.currency)}${value}`} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-faint)" fontSize={10} tickFormatter={(value: number) => formatCurrencyValue(value, account.currency)} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   itemStyle={tooltipItemStyle}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any) => [`${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)}`, 'Balance']}
+                  formatter={(value: any) => [formatCurrencyValue(Number(value), account.currency), 'Balance']}
                 />
                 <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3}
                   dot={{ r: 2, fill: '#3b82f6', strokeWidth: 2 }}
@@ -542,14 +542,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
               <BarChart data={stats.dayPerformance} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="day" stroke="var(--text-faint)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-faint)" fontSize={10} tickFormatter={(val: number) => `${getCurrencySymbol(account.currency)}${val}`} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-faint)" fontSize={10} tickFormatter={(val: number) => formatCurrencyValue(val, account.currency)} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ fill: 'var(--hover-bg)', opacity: 0.4 }}
                   contentStyle={tooltipStyle}
                   itemStyle={tooltipItemStyle}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any, name: any, props: any) => {
-                    const strVal = `${getCurrencySymbol(account.currency)}${Number(value).toFixed(2)} (${props.payload?.percentage > 0 ? '+' : ''}${props.payload?.percentage}%)`;
+                  formatter={(value: any, _name: any, props: any) => {
+                    const strVal = `${formatCurrencyValue(Number(value), account.currency)} (${props.payload?.percentage > 0 ? '+' : ''}${props.payload?.percentage}%)`;
                     return [strVal, 'PnL'];
                   }}
                 />
