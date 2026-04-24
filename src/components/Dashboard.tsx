@@ -337,7 +337,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
             <span className="text-sm font-semibold uppercase">Total Balance</span>
             <Wallet className="w-5 h-5 opacity-50" />
           </div>
-          <div className="text-3xl font-bold font-mono tracking-tight mb-1" style={{ color: 'var(--text-primary)' }}>
+          <div className="text-xl lg:text-2xl font-bold font-mono tracking-tight mb-1" style={{ color: 'var(--text-primary)' }}>
             {formatCurrencyValue(stats.currentBalance, account.currency)}
           </div>
           <div className="text-xs text-blue-400/80">Account Equity · <span className="font-semibold">{account.currency}</span></div>
@@ -352,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trades, account, balanceLo
             <span className="text-sm font-semibold uppercase">Net PnL</span>
             <Activity className="w-5 h-5 opacity-50" />
           </div>
-          <div className={`text-3xl font-bold font-mono tracking-tight mb-1 ${stats.netPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <div className={`text-2xl font-bold font-mono tracking-tight mb-1 ${stats.netPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {formatCurrencyWithSign(stats.netPnL, account.currency)}
           </div>
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Total accumulated profit/loss</div>
