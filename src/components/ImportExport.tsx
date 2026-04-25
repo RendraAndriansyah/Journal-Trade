@@ -118,6 +118,8 @@ export const ImportExport = ({ accountId, currency = 'USD' }: { accountId: strin
 
     const existingTrades   = await db.trades.where('accountId').equals(accountId).toArray();
     const existingBalances = await db.balanceLogs.where('accountId').equals(accountId).toArray();
+    const account          = await db.accounts.get(accountId);
+    const resolvedCurrency = currency || account?.currency || 'USD';
 
     const unmatchedTrades   = [...existingTrades];
     const unmatchedBalances = [...existingBalances];
@@ -198,10 +200,13 @@ export const ImportExport = ({ accountId, currency = 'USD' }: { accountId: strin
         inIdx = possibleMatches[0].i;
       } else if (possibleMatches.length > 1) {
         let bestDiff = Infinity;
+        // Compare simPnL to IDR profit properly
+        const rate = resolvedCurrency === 'IDR' ? 16000 : 1;
         for (const match of possibleMatches) {
           const simPips = calculatePips(match.p.price, record.price, parsedTradeType, record.symbol);
-          const simPnL  = calculatePnL(simPips, record.lots, record.symbol);
-          const diff    = Math.abs(simPnL - record.profit);
+          const simPnLUSD = calculatePnL(simPips, record.lots, record.symbol);
+          const simPnLTarget = simPnLUSD * rate;
+          const diff = Math.abs(simPnLTarget - record.profit);
           if (diff < bestDiff) { bestDiff = diff; inIdx = match.i; }
         }
       }
@@ -220,7 +225,7 @@ export const ImportExport = ({ accountId, currency = 'USD' }: { accountId: strin
         const rp      = record.rawProfit !== undefined ? record.rawProfit : record.profit;
         if (entryPrice === 0 && Math.abs(simPnL - rp) > 5.0 && Math.abs(record.profit) > 0.01) {
           const isXAU = record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD');
-          const rate = currency === 'IDR' ? 16000 : 1;
+          const rate = resolvedCurrency === 'IDR' ? 16000 : 1;
           const inferredDiff = (rp / rate) / ((isXAU ? 100 : 100000) * record.lots);
           entryPrice = parsedTradeType === 'Buy'
             ? record.price - inferredDiff
@@ -241,7 +246,7 @@ export const ImportExport = ({ accountId, currency = 'USD' }: { accountId: strin
         // No matching "in" found — reverse-engineer entry price from raw profit
         const rp     = record.rawProfit !== undefined ? record.rawProfit : record.profit;
         const isXAU  = record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD');
-        const rate   = currency === 'IDR' ? 16000 : 1;
+        const rate   = resolvedCurrency === 'IDR' ? 16000 : 1;
         const iDiff  = (rp / rate) / ((isXAU ? 100 : 100000) * record.lots);
         entryPrice   = parsedTradeType === 'Buy' ? record.price - iDiff : record.price + iDiff;
       }
