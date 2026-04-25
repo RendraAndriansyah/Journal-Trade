@@ -105,7 +105,7 @@ function parseMT5RawLog(raw: string): ExportFormat[] {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const ImportExport = ({ accountId }: { accountId: string }) => {
+export const ImportExport = ({ accountId, currency = 'USD' }: { accountId: string, currency?: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading]   = useState(false);
   const [rawText, setRawText]   = useState('');
@@ -218,9 +218,10 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         const simPips = calculatePips(entryPrice, record.price, parsedTradeType, record.symbol);
         const simPnL  = calculatePnL(simPips, record.lots, record.symbol);
         const rp      = record.rawProfit !== undefined ? record.rawProfit : record.profit;
-        if (Math.abs(simPnL - rp) > 5.0 && Math.abs(record.profit) > 0.01) {
+        if (entryPrice === 0 && Math.abs(simPnL - rp) > 5.0 && Math.abs(record.profit) > 0.01) {
           const isXAU = record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD');
-          const inferredDiff = rp / ((isXAU ? 100 : 100000) * record.lots);
+          const rate = currency === 'IDR' ? 16000 : 1;
+          const inferredDiff = (rp / rate) / ((isXAU ? 100 : 100000) * record.lots);
           entryPrice = parsedTradeType === 'Buy'
             ? record.price - inferredDiff
             : record.price + inferredDiff;
@@ -240,7 +241,8 @@ export const ImportExport = ({ accountId }: { accountId: string }) => {
         // No matching "in" found — reverse-engineer entry price from raw profit
         const rp     = record.rawProfit !== undefined ? record.rawProfit : record.profit;
         const isXAU  = record.symbol.toUpperCase().includes('XAU') || record.symbol.toUpperCase().includes('GOLD');
-        const iDiff  = rp / ((isXAU ? 100 : 100000) * record.lots);
+        const rate   = currency === 'IDR' ? 16000 : 1;
+        const iDiff  = (rp / rate) / ((isXAU ? 100 : 100000) * record.lots);
         entryPrice   = parsedTradeType === 'Buy' ? record.price - iDiff : record.price + iDiff;
       }
 

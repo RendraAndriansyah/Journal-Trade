@@ -398,7 +398,7 @@ function App() {
               </div>
             ) : activeTab === 'import' ? (
               <div className="max-w-3xl mx-auto">
-                <ImportExport accountId={activeAccount.id} />
+                <ImportExport accountId={activeAccount.id} currency={activeAccount.currency} />
               </div>
             ) : null}
             </div>
