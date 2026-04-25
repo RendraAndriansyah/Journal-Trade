@@ -5,7 +5,7 @@ import { format, parseISO, isToday, startOfDay, addDays, subDays } from 'date-fn
 import { ArrowUpRight, ArrowDownRight, Trash2, Filter, GitBranch, Layers2, X, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Trade } from '../types';
 
-import { formatCurrencyWithSign } from '../utils/currency';
+import { formatCurrencyWithSign, formatPips } from '../utils/currency';
 
 interface Props { accountId: string; currency: string; }
 
@@ -231,7 +231,7 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
                       <td className="px-3 py-2.5 font-mono text-right" style={{ color: 'var(--text-secondary)' }}>{t.lotSize.toFixed(2)}</td>
                       <td className="px-3 py-2.5 font-mono text-right" style={{ color: 'var(--text-muted)' }}>{t.entryPrice.toFixed(2)}</td>
                       <td className="px-3 py-2.5 font-mono text-right" style={{ color: 'var(--text-muted)' }}>{t.closingPrice.toFixed(2)}</td>
-                      <td className={`px-3 py-2.5 font-mono text-right ${t.pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{t.pips >= 0 ? '+' : ''}{t.pips}</td>
+                      <td className={`px-3 py-2.5 font-mono text-right ${t.pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatPips(t.pips)}</td>
                       <td className={`px-3 py-2.5 font-mono font-bold text-right ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrencyWithSign(t.pnl, currency)}</td>
                     </tr>
                   ))}
@@ -306,7 +306,7 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
                       <td className="px-3 py-2.5 font-mono text-right" style={{ color: 'var(--text-muted)' }}>
                         {row.isPartialGroup ? <span className="italic text-xs" style={{ color: 'var(--text-muted)' }}>avg {row.avgClosePrice.toFixed(2)}</span> : row.avgClosePrice.toFixed(2)}
                       </td>
-                      <td className={`px-3 py-2.5 font-mono text-right ${row.totalPips>=0?'text-emerald-400':'text-rose-400'}`}>{row.totalPips>=0?'+':''}{row.totalPips}</td>
+                      <td className={`px-3 py-2.5 font-mono text-right ${row.totalPips>=0?'text-emerald-400':'text-rose-400'}`}>{formatPips(row.totalPips)}</td>
                       <td className={`px-3 py-2.5 font-mono font-bold text-right ${row.totalPnl>=0?'text-emerald-400':'text-rose-400'}`}>{formatCurrencyWithSign(row.totalPnl, currency)}</td>
                     </tr>
                   ))}
@@ -474,7 +474,7 @@ export const TradeHistory = ({ accountId, currency }: Props) => {
                     {(lr.isLayer || lr.rows[0]?.isPartialGroup) ? <span className="italic text-xs" style={{ color: 'var(--text-muted)' }}>avg {lr.avgClosePrice.toFixed(2)}</span> : lr.avgClosePrice.toFixed(2)}
                   </td>
                   <td className={`px-4 py-3 text-sm font-mono text-right ${lr.totalPips>=0?'text-emerald-400':'text-rose-400'}`}>
-                    {lr.totalPips>=0?'+':''}{lr.totalPips}
+                    {formatPips(lr.totalPips)}
                   </td>
                   <td className={`px-4 py-3 text-sm font-mono font-bold text-right ${lr.totalPnl>=0?'text-emerald-400':'text-rose-400'}`}>
                     {formatCurrencyWithSign(lr.totalPnl, currency)}

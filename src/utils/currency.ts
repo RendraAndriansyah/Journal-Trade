@@ -26,3 +26,10 @@ export function formatCurrencyWithSign(amount: number, currency: string): string
   const formatted = formatNumber(Math.abs(amount));
   return `${sign}${sym}${space}${formatted}`;
 }
+
+export function formatPips(pips: number): string {
+  const sign = pips >= 0 ? '+' : '-';
+  const parts = Math.abs(pips).toFixed(1).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${sign}${parts.join('.')}`;
+}
